@@ -3,3 +3,5 @@ obj/
 Storage/
 .vs/
 *.user
+__pycache__/
+*.pyc
