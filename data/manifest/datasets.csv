@@ -1,0 +1,9 @@
+dataset_id,source,assay,genome_build,n_tumor,n_normal,stage_available,normal_type,access,license,notes,status
+TCGA-STAD,GDC/TCGA,multi-omic (verify per file),Data unavailable,Data unavailable,Data unavailable,Available in source metadata,Adjacent/normal where available,Public portal access,Source dependent,Candidate discovery source; exact files not downloaded in Phase 1,partial
+ICGC/ARGO-STAD,ICGC,Data unavailable,Data unavailable,Data unavailable,Data unavailable,Data unavailable,Data unavailable,Controlled/public depending on dataset,Source dependent,Requires verification before use,unavailable
+PCAWG,PCAWG,Data unavailable,Data unavailable,Data unavailable,Data unavailable,Data unavailable,Data unavailable,Public/controlled depending on component,Source dependent,Requires verification before use,unavailable
+GEO,NCBI GEO,Data unavailable,Data unavailable,Data unavailable,Data unavailable,Data unavailable,Data unavailable,Public,Study dependent,Search required in later phases,partial
+SRA/EGA,NCBI/EBI,Data unavailable,Data unavailable,Data unavailable,Data unavailable,Data unavailable,Data unavailable,Controlled/public,Study dependent,No accession invented,unavailable
+gnomAD,gnomAD,population variant reference,Data unavailable,NA,NA,NA,NA,Public,Project license,Used later for germline filtering,partial
+ClinVar,ClinVar,clinical variant reference,Data unavailable,NA,NA,NA,NA,Public,NCBI terms,Used later for annotation,partial
+COSMIC,COSMIC,somatic cancer reference,Data unavailable,NA,NA,NA,NA,Access dependent,COSMIC terms,Requires account/license verification,unavailable

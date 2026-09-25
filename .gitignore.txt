@@ -1,0 +1,68 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build
+[Bb]in/
+[Oo]bj/
+
+# Test results
+TestResults/
+*.trx
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# ASP.NET Core
+wwwroot/lib/
+
+# Logs
+*.log
+logs/
+
+# Local configuration / secrets
+appsettings.Local.json
+appsettings.*.Local.json
+secrets.json
+
+# User-specific files
+*.rsuser
+
+# Rider / JetBrains
+.idea/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data files
+*.bam
+*.bai
+*.cram
+*.crai
+*.vcf.gz
+*.bcf
+*.bed.gz
+
+# Generated reports
+Reports/
+Output/
