@@ -32,9 +32,11 @@ def execute(command):
     if command == "run":
         return {"command": "run", "status": "completed"}
     if command == "validate":
-        return validate_command()
+        result = validate_command()
+        return {"command": "validate", **result}
     if command == "report":
-        return {"command": "report", "status": "completed"}
+        result = {"command": "report", "status": "completed"}
+        return result
     raise ValueError(f"Unknown command: {command}")
 
 
