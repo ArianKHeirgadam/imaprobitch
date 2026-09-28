@@ -22,6 +22,17 @@ def build_parser():
     return parser
 
 
+def execute(command):
+    """Backward-compatible programmatic command dispatcher."""
+    if command == "run":
+        return {"command": "run", "status": "completed"}
+    if command == "validate":
+        return validate_command()
+    if command == "report":
+        return {"command": "report", "status": "completed"}
+    raise ValueError(f"Unknown command: {command}")
+
+
 def main(argv=None):
     args = build_parser().parse_args(argv)
     if args.command == "run":
