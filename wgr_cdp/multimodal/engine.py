@@ -127,6 +127,16 @@ def analyze_multimodal_features(rows, metadata=None):
         outputs[ft]=stats
     return outputs
 
+def categorical_comparison(rows, key):
+    groups=sorted({str(r.get(key,"")).strip() for r in rows if str(r.get(key,"")).strip()})
+    out=[]
+    for g in groups:
+        subset=[r for r in rows if str(r.get(key,"")).strip()==g]
+        patients=sorted({r["patient"] for r in subset})
+        detected=sum(1 for r in subset if r["status"]=="Detected")
+        out.append({"grouping":key,"group":g,"patients":len(patients),"features":len(subset),"detected":detected,"detect_rate":detected/len(subset) if subset else 0.0})
+    return out
+
 def optimize_panel(matrix, max_k=15, min_coverage=0.0):
     if not matrix: return {"selected":[],"coverage":0.0,"covered_patients":0,"patient_count":0}
     patients=[r["patient"] for r in matrix]; candidates=[k for k in matrix[0] if k!="patient"]
@@ -153,6 +163,10 @@ def run_multimodal_analysis(feature_path, output_dir, metadata=None, max_panel_s
     stats=[]
     for ft,items in by_type.items(): stats.extend(items)
     if stats: write_csv(output/"multimodal_cohort_comparison.csv",stats,list(stats[0].keys()))
+    cohort_rows=categorical_comparison(rows,"group")
+    stage_rows=categorical_comparison(rows,"stage")
+    if cohort_rows: write_csv(output/"cohort_comparison.csv",cohort_rows,list(cohort_rows[0].keys()))
+    if stage_rows: write_csv(output/"stage_comparison.csv",stage_rows,list(stage_rows[0].keys()))
     write_csv(output/"detectability_curve.csv",curve,list(curve[0].keys()))
     (output/"panel.json").write_text(json.dumps(panel,indent=2),encoding="utf-8")
     from .report import write_report
