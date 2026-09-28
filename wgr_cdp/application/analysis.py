@@ -12,7 +12,7 @@ from pathlib import Path
 
 from wgr_cdp.candidate_discovery.discover import discover_candidates
 from wgr_cdp.cohort_analysis.compare import compare_gene_cohorts, compare_variant_cohorts
-from wgr_cdp.data_ingestion.vcf import read_vcf
+from wgr_cdp.data_ingestion.vcf_cohort import read_vcf_cohort
 from wgr_cdp.evaluation.multiple_testing import add_fdr, filter_significant
 
 
@@ -50,24 +50,10 @@ def _load_cohort(directory, group):
         raise ValueError(f"cohort directory does not exist: {directory}")
     paths = sorted(directory.glob("*.vcf")) + sorted(directory.glob("*.vcf.gz"))
     if not paths:
-        raise ValueError(f"no .vcf files found in: {directory}")
-
+        raise ValueError(f"no .vcf or .vcf.gz files found in: {directory}")
     samples = []
     for path in paths:
-        if path.suffix == ".gz":
-            raise ValueError(f"gzip VCF is not supported by the built-in reader: {path}")
-        records = [_record_with_info(r) for r in read_vcf(path)]
-        unique = {}
-        for record in records:
-            unique[record["variant_key"]] = record
-        records = list(unique.values())
-        samples.append({
-            "sample_id": path.stem,
-            "group": group,
-            "variants": [r["variant_key"] for r in records],
-            "variant_records": records,
-            "source_file": str(path),
-        })
+        samples.extend(read_vcf_cohort(path, group))
     return samples
 
 
@@ -176,6 +162,7 @@ def analyze_cohorts(healthy_dir, cancer_dir, output_dir, annotate=False, alpha=0
     significant_genes = filter_significant(gene_results, alpha=alpha)
 
     for candidate in candidates:
+        candidate["variant_type"] = (variant_records.get(candidate.get("feature")) or {}).get("variant_type")
         candidate["gene"] = (candidate.get("functional_evidence") or {}).get("gene")
         candidate["consequence"] = (candidate.get("functional_evidence") or {}).get("consequence")
         candidate["impact"] = (candidate.get("functional_evidence") or {}).get("impact")
@@ -194,9 +181,9 @@ def analyze_cohorts(healthy_dir, cancer_dir, output_dir, annotate=False, alpha=0
         "status": "completed",
     }
 
-    variant_columns = ["feature", "case_carriers", "control_carriers", "case_n", "control_n", "case_frequency", "control_frequency", "frequency_difference", "case_control_frequency_ratio", "p_value", "q_value"]
+    variant_columns = ["feature", "variant_type", "case_carriers", "control_carriers", "case_n", "control_n", "case_frequency", "control_frequency", "frequency_difference", "case_control_frequency_ratio", "p_value", "q_value"]
     gene_columns = variant_columns
-    candidate_columns = ["candidate_rank", "feature", "gene", "case_frequency", "control_frequency", "frequency_difference", "p_value", "q_value", "evidence_score", "consequence", "impact"]
+    candidate_columns = ["candidate_rank", "feature", "variant_type", "gene", "case_frequency", "control_frequency", "frequency_difference", "p_value", "q_value", "evidence_score", "consequence", "impact"]
 
     _write_csv(output / "variants.csv", variant_results, variant_columns)
     _write_csv(output / "significant_variants.csv", significant_variants, variant_columns)
