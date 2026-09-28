@@ -138,16 +138,24 @@ def categorical_comparison(rows, key):
     return out
 
 def optimize_panel(matrix, max_k=15, min_coverage=0.0):
-    if not matrix: return {"selected":[],"coverage":0.0,"covered_patients":0,"patient_count":0}
-    patients=[r["patient"] for r in matrix]; candidates=[k for k in matrix[0] if k!="patient"]
-    selected=[]; covered=set()
-    while candidates and len(selected)<max_k:
-        best=max(candidates,key=lambda c:sum(1 for r in matrix if r.get(c)==1 and r["patient"] not in covered))
-        gain={r["patient"] for r in matrix if r.get(best)==1}-covered
-        if not gain: break
-        selected.append(best); covered |= gain; candidates.remove(best)
-        if len(covered)/len(patients)>=min_coverage: break
-    return {"selected":selected,"coverage":len(covered)/len(patients),"covered_patients":len(covered),"patient_count":len(patients),"max_k":max_k}
+    if not matrix:
+        return {"selected": [], "coverage": 0.0, "covered_patients": 0, "patient_count": 0, "max_k": max_k}
+    patients = [r["patient"] for r in matrix]
+    candidates = [k for k in matrix[0] if k != "patient"]
+    selected = []
+    covered = set()
+    while candidates and len(selected) < max_k:
+        gains = {c: {r["patient"] for r in matrix if r.get(c) == 1} - covered for c in candidates}
+        best = max(candidates, key=lambda c: (len(gains[c]), c))
+        gain = gains[best]
+        if not gain:
+            break
+        selected.append(best)
+        covered.update(gain)
+        candidates.remove(best)
+        if len(covered) / len(patients) >= min_coverage:
+            break
+    return {"selected": selected, "coverage": len(covered) / len(patients), "covered_patients": len(covered), "patient_count": len(patients), "max_k": max_k}
 
 def write_csv(path,rows,fields):
     with open(path,"w",encoding="utf-8",newline="") as h:
