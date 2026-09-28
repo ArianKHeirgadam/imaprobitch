@@ -1,0 +1,3 @@
+candidate_rank,feature,gene,case_frequency,control_frequency,frequency_difference,p_value,q_value,evidence_score,consequence,impact
+1,17:7674220:C:['T'],,1.0,0.0,1.0,1.0,1.0,40.0,,
+2,1:26700000:A:['G'],,0.0,1.0,-1.0,1.0,1.0,40.0,,

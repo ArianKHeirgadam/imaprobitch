@@ -1,0 +1,69 @@
+{
+  "summary": {
+    "generated_at": "2026-09-28T09:11:23.292268+00:00",
+    "control_samples": 1,
+    "case_samples": 1,
+    "unique_variants": 2,
+    "tested_variants": 2,
+    "significant_variants": 0,
+    "unique_genes": 0,
+    "significant_genes": 0,
+    "alpha": 0.05,
+    "external_annotation_enabled": false,
+    "status": "completed"
+  },
+  "samples": [
+    {
+      "sample_id": "H001",
+      "group": "control",
+      "variants": [
+        "1:26700000:A:['G']"
+      ],
+      "variant_records": [
+        {
+          "chrom": "1",
+          "pos": 26700000,
+          "id": null,
+          "ref": "A",
+          "alt": [
+            "G"
+          ],
+          "qual": "80",
+          "filter": "PASS",
+          "info": "DP=60;AF=0.02",
+          "variant_key": "1:26700000:A:['G']",
+          "gene": null,
+          "consequence": null,
+          "impact": null
+        }
+      ],
+      "source_file": "data\\healthy\\H001.vcf"
+    },
+    {
+      "sample_id": "C001",
+      "group": "case",
+      "variants": [
+        "17:7674220:C:['T']"
+      ],
+      "variant_records": [
+        {
+          "chrom": "17",
+          "pos": 7674220,
+          "id": null,
+          "ref": "C",
+          "alt": [
+            "T"
+          ],
+          "qual": "95",
+          "filter": "PASS",
+          "info": "DP=75;AF=0.48",
+          "variant_key": "17:7674220:C:['T']",
+          "gene": null,
+          "consequence": null,
+          "impact": null
+        }
+      ],
+      "source_file": "data\\cancer\\C001.vcf"
+    }
+  ]
+}

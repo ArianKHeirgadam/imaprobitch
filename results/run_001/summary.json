@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-09-28T09:11:23.292268+00:00",
+  "control_samples": 1,
+  "case_samples": 1,
+  "unique_variants": 2,
+  "tested_variants": 2,
+  "significant_variants": 0,
+  "unique_genes": 0,
+  "significant_genes": 0,
+  "alpha": 0.05,
+  "external_annotation_enabled": false,
+  "status": "completed"
+}

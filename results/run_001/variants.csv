@@ -1,0 +1,3 @@
+feature,case_carriers,control_carriers,case_n,control_n,case_frequency,control_frequency,frequency_difference,case_control_frequency_ratio,p_value,q_value
+17:7674220:C:['T'],1,0,1,1,1.0,0.0,1.0,inf,1.0,1.0
+1:26700000:A:['G'],0,1,1,1,0.0,1.0,-1.0,0.0,1.0,1.0
