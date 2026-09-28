@@ -153,7 +153,7 @@ def optimize_panel(matrix, max_k=15, min_coverage=0.0):
         selected.append(best)
         covered.update(gain)
         candidates.remove(best)
-        if len(covered) / len(patients) >= min_coverage:
+        if min_coverage > 0.0 and len(covered) / len(patients) >= min_coverage:
             break
     return {"selected": selected, "coverage": len(covered) / len(patients), "covered_patients": len(covered), "patient_count": len(patients), "max_k": max_k}
 
