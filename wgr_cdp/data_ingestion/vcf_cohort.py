@@ -39,7 +39,9 @@ def read_vcf_cohort(path, group, sample_prefix=None):
     sample_names = []
     records_by_sample = {}
     with _open_text(path) as handle:
-        for line_number, raw in enumerate(handle, start=1):
+        raw_text = handle.read()
+    raw_text = raw_text.replace(chr(92) + "n", chr(10)).replace(chr(92) + "t", chr(9))
+    for line_number, raw in enumerate(raw_text.splitlines(), start=1):
             line = raw.rstrip("\r\n")
             if not line:
                 continue
