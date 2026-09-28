@@ -1,0 +1,8 @@
+patient,group,stage,region,feature_type,value,status,tumor_fraction,depth,error_rate,blood_background,validation_status,assay
+C001,cancer,II,17:7670000-7671000,SNV,C>T,Detected,0.10,300,0.001,0.00,Data unavailable,cfDNA
+H001,healthy,,17:7670000-7671000,SNV,C>T,Not detected,,,0.001,0.00,Data unavailable,cfDNA
+C001,cancer,II,8:1000000-1100000,CNV,copy_number=4,Detected,0.10,300,0.001,0.02,Data unavailable,cfDNA
+C002,cancer,III,8:1000000-1100000,SV,DEL,Detected,0.05,500,0.001,0.01,Data unavailable,cfDNA
+C001,cancer,II,1:100000-200000,METHYLATION,beta=0.92,Detected,0.10,300,0.001,0.00,Data unavailable,cfDNA
+C001,cancer,II,MT:1000-1100,MITOCHONDRIAL,heteroplasmy=0.35,Detected,0.10,300,0.001,0.00,Data unavailable,cfDNA
+C001,cancer,II,1:500000-600000,FRAGMENTOMICS,fragment_signal=0.8,Detected,0.10,300,0.001,0.00,Data unavailable,cfDNA
