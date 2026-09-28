@@ -145,6 +145,6 @@ def run_multimodal_analysis(feature_path, output_dir, metadata=None, max_panel_s
     for ft,items in by_type.items(): stats.extend(items)
     if stats: write_csv(output/"multimodal_cohort_comparison.csv",stats,list(stats[0].keys()))
     write_csv(output/"detectability_curve.csv",curve,list(curve[0].keys()))
-    (output/"panel.json").write_text(json.dumps(panel,indent=2),encoding="utf-8")
+    (output/"panel.json").write_text(json.dumps(panel,indent=2),encoding="utf-8")\n    from .report import write_report
     (output/"lod.json").write_text(json.dumps({"estimated_lod":lod,"depth":depth,"error_rate":error_rate},indent=2),encoding="utf-8")
-    return {"feature_types":sorted(by_type),"feature_count":len(rows),"multi_resolution_count":len(multi),"panel":panel,"lod":lod}
+    result={"feature_types":sorted(by_type),"feature_count":len(rows),"multi_resolution_count":len(multi),"panel":panel,"lod":lod}\n    write_report(output,result,rows)\n    return result
