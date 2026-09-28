@@ -114,7 +114,16 @@ def analyze_multimodal_features(rows, metadata=None):
             hdet={r["patient"] for r in control if r["region"]==region and r["status"]=="Detected"}
             cn=len({r["patient"] for r in case}); hn=len({r["patient"] for r in control})
             cf=len(cdet)/cn if cn else 0; hf=len(hdet)/hn if hn else 0
-            subset=[r for r in items if r["region"]==region]\n            early=[r for r in subset if str(r.get("stage","")).replace(" ","").lower() in {"i","ii","stagei","stageii","1","2","stage1","stage2"} and r["status"]=="Detected"]\n            early_cases={r["patient"] for r in early if _group_of(r,metadata) in {"case","cancer","tumor"}}\n            early_stage_fraction=len(early_cases)/len(cdet) if cdet else 0.0\n            backgrounds=[_f(r.get("blood_background"),0.0) for r in subset if r.get("blood_background") not in (None,"")]\n            detectabilities=[]\n            for r in subset:\n                tf=_f(r.get("tumor_fraction"),0.0); dp=int(_f(r.get("depth"),300) or 300); er=_f(r.get("error_rate"),0.001)\n                if tf>0: detectabilities.append(detectability_curve([tf],dp,er)[0]["power"])\n            stats.append({"feature":c,"feature_type":ft,"case_carriers":len(cdet),"control_carriers":len(hdet),"case_n":cn,"control_n":hn,"case_frequency":cf,"control_frequency":hf,"frequency_difference":cf-hf,"specificity":max(0.0,cf-hf),"early_stage_fraction":early_stage_fraction,"blood_background":max(backgrounds) if backgrounds else None,"detectability":sum(detectabilities)/len(detectabilities) if detectabilities else None,"validation_status":next((r.get("validation_status") for r in subset if r.get("validation_status")), "Data unavailable"),"validation_gap":next((r.get("validation_status") for r in subset if r.get("validation_status")), "Data unavailable")=="Data unavailable"})
+            subset=[r for r in items if r["region"]==region]
+            early=[r for r in subset if str(r.get("stage","")).replace(" ","").lower() in {"i","ii","stagei","stageii","1","2","stage1","stage2"} and r["status"]=="Detected"]
+            early_cases={r["patient"] for r in early if _group_of(r,metadata) in {"case","cancer","tumor"}}
+            early_stage_fraction=len(early_cases)/len(cdet) if cdet else 0.0
+            backgrounds=[_f(r.get("blood_background"),0.0) for r in subset if r.get("blood_background") not in (None,"")]
+            detectabilities=[]
+            for r in subset:
+                tf=_f(r.get("tumor_fraction"),0.0); dp=int(_f(r.get("depth"),300) or 300); er=_f(r.get("error_rate"),0.001)
+                if tf>0: detectabilities.append(detectability_curve([tf],dp,er)[0]["power"])
+            stats.append({"feature":c,"feature_type":ft,"case_carriers":len(cdet),"control_carriers":len(hdet),"case_n":cn,"control_n":hn,"case_frequency":cf,"control_frequency":hf,"frequency_difference":cf-hf,"specificity":max(0.0,cf-hf),"early_stage_fraction":early_stage_fraction,"blood_background":max(backgrounds) if backgrounds else None,"detectability":sum(detectabilities)/len(detectabilities) if detectabilities else None,"validation_status":next((r.get("validation_status") for r in subset if r.get("validation_status")), "Data unavailable"),"validation_gap":next((r.get("validation_status") for r in subset if r.get("validation_status")), "Data unavailable")=="Data unavailable"})
         outputs[ft]=stats
     return outputs
 
@@ -145,6 +154,9 @@ def run_multimodal_analysis(feature_path, output_dir, metadata=None, max_panel_s
     for ft,items in by_type.items(): stats.extend(items)
     if stats: write_csv(output/"multimodal_cohort_comparison.csv",stats,list(stats[0].keys()))
     write_csv(output/"detectability_curve.csv",curve,list(curve[0].keys()))
-    (output/"panel.json").write_text(json.dumps(panel,indent=2),encoding="utf-8")\n    from .report import write_report
+    (output/"panel.json").write_text(json.dumps(panel,indent=2),encoding="utf-8")
+    from .report import write_report
     (output/"lod.json").write_text(json.dumps({"estimated_lod":lod,"depth":depth,"error_rate":error_rate},indent=2),encoding="utf-8")
-    result={"feature_types":sorted(by_type),"feature_count":len(rows),"multi_resolution_count":len(multi),"panel":panel,"lod":lod}\n    write_report(output,result,rows)\n    return result
+    result={"feature_types":sorted(by_type),"feature_count":len(rows),"multi_resolution_count":len(multi),"panel":panel,"lod":lod}
+    write_report(output,result,rows)
+    return result
