@@ -50,8 +50,12 @@ def read_vcf_cohort(path, group, sample_prefix=None):
             if line.startswith("#CHROM"):
                 fields = line.split("\t")
                 sample_names = fields[9:]
-                for name in sample_names:
-                    records_by_sample[name] = []
+                if sample_names:
+                    for name in sample_names:
+                        records_by_sample[name] = []
+                else:
+                    fallback = sample_prefix or path.stem.replace(".vcf", "")
+                    records_by_sample.setdefault(fallback, [])
                 continue
             if line.startswith("#"):
                 continue
