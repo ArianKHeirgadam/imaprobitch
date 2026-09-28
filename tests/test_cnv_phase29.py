@@ -17,7 +17,7 @@ def test_cnv_parser_normalizes_chromosome_and_group(tmp_path):
 
 def test_cnv_real_cohort_analysis(tmp_path):
     path = tmp_path/"cnv.csv"
-    path.write_text("sample_id,chromosome,start,end,copy_number,genes,group\nC1,8,100,200,4,GENE1,case\nC2,8,100,200,4,GENE1,case\nH1,8,100,200,2,GENE1,control\nH2,8,100,200,2,GENE1,control\n", encoding="utf-8")
+    rows_text = "sample_id,chromosome,start,end,copy_number,genes,group\n" + "".join([f"C{i},8,100,200,4,GENE1,case\n" for i in range(1,11)]) + "".join([f"H{i},8,100,200,2,GENE1,control\n" for i in range(1,11)])\n    path.write_text(rows_text, encoding="utf-8")
     rows = read_cnv_segments(path)
     result = analyze_cnv_segments(rows, tmp_path/"out")
     assert result["regions_tested"] == 1
