@@ -15,7 +15,9 @@ def normalize_evidence(candidate):
 def apply_constraints(candidate,min_detectability=0.0,max_background=1.0,require_assay=True,require_fpr=True):
     row=normalize_evidence(candidate); constraints=dict(row.get("constraints") or {})
     detectability=_score(row.get("detectability")); background=_score(row.get("blood_background_safety"))
-    detectable=(not require_assay) if detectability is None else detectability>=float(min_detectability)
+    # Missing detectability is not negative evidence. It becomes a hard failure only when
+    # the caller explicitly requires an assay/detectability threshold.
+    detectable=True if detectability is None and float(min_detectability) <= 0 else ((not require_assay) if detectability is None else detectability>=float(min_detectability))
     background_safe=True if background is None else background>=max(0.0,1.0-float(max_background))
     assay_ok=bool(constraints.get("assay_ok",True)) if require_assay else True
     fpr_ok=bool(constraints.get("fpr_ok",True)) if require_fpr else True
