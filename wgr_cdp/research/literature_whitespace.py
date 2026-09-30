@@ -28,3 +28,51 @@ def summarize_whitespace(records):
         counts=[r["result_count"] for r in rows if isinstance(r.get("result_count"),int)]
         out[candidate]={"queries":len(rows),"searched_queries":sum(r.get("status")=="Available" for r in rows),"result_counts":counts,"status":"Available" if counts else "Data unavailable","novelty":"Data unavailable","validation_gap":"Data unavailable","diagnostic_utility":"Data unavailable"}
     return out
+
+
+def search_europe_pmc(query, timeout=10, page_size=1):
+    """Reproducible Europe PMC REST search with explicit unavailable semantics."""
+    url = (
+        "https://www.ebi.ac.uk/europepmc/webservices/rest/search?"
+        "format=json&query=" + quote(query) + f"&pageSize={int(page_size)}"
+    )
+    searched_at = datetime.now(timezone.utc).isoformat()
+    try:
+        with urlopen(url, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        return {
+            "source": "Europe PMC",
+            "query": query,
+            "date": searched_at,
+            "result_count": int(payload.get("hitCount", 0)),
+            "status": "Available",
+        }
+    except Exception as exc:
+        return {
+            "source": "Europe PMC",
+            "query": query,
+            "date": searched_at,
+            "result_count": "Data unavailable",
+            "status": "Data unavailable",
+            "error_type": type(exc).__name__,
+        }
+
+
+def search_literature(query, sources=("PubMed", "Europe PMC"), timeout=10):
+    """Search the declared literature sources without merging source counts."""
+    records = []
+    for source in sources:
+        if source == "PubMed":
+            records.append(search_pubmed(query, timeout=timeout))
+        elif source == "Europe PMC":
+            records.append(search_europe_pmc(query, timeout=timeout))
+        else:
+            records.append({
+                "source": source,
+                "query": query,
+                "date": datetime.now(timezone.utc).isoformat(),
+                "result_count": "Data unavailable",
+                "status": "Data unavailable",
+                "error_type": "UnsupportedSource",
+            })
+    return records
