@@ -291,7 +291,7 @@ def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1):
     active = set()
     for row in rows:
         for region in _bin(row["region"], RESOLUTIONS[0]):
-            active.add((region, _feature_type(row)))
+            active.add((region, _feature_type(row), None))
 
     lineage = []
     retained = set()
