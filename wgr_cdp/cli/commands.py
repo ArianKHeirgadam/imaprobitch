@@ -22,7 +22,7 @@ def _integrate_candidates(output, snv_candidates, cnv_candidates):
     with (path/"integrated_candidates.csv").open("w",encoding="utf-8",newline="") as h:
         w=csv.DictWriter(h,fieldnames=fields); w.writeheader(); w.writerows(rows)
 
-def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,features=None,metadata=None,max_panel_size=15,depth=300,error_rate=0.001,cnv=None,literature_search=False):
+def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,features=None,metadata=None,max_panel_size=15,depth=300,error_rate=0.001,cnv=None,literature_search=False,validation_candidates=None,bootstrap=200):
     result=analyze_cohorts(healthy,cancer,output,annotate=annotate,alpha=alpha,timeout=timeout)
     cnv_candidates=[]
     if cnv:
@@ -46,6 +46,36 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     )
     from wgr_cdp.research.a5_integration import append_a5_to_report
     append_a5_to_report(output, result["a5"])
+    from wgr_cdp.research.a6_validation import run_a6
+    from wgr_cdp.research.a5_integration import DEFAULT_WEIGHTS
+    matrix = None
+    matrix_path = Path(output) / "multimodal" / "patient_candidate_matrix.csv"
+    if matrix_path.exists():
+        matrix = {}
+        with matrix_path.open(encoding="utf-8", newline="") as h:
+            for row in csv.DictReader(h):
+                patient = row.pop("patient")
+                matrix[patient] = {}
+                for key, value in row.items():
+                    try: matrix[patient][key] = float(value)
+                    except (TypeError, ValueError): pass
+    validation_rows = None
+    if validation_candidates:
+        with Path(validation_candidates).open(encoding="utf-8-sig", newline="") as h:
+            validation_rows = list(csv.DictReader(h))
+    result["a6"] = run_a6(
+        a5_candidates, DEFAULT_WEIGHTS,
+        constraints={"min_detectability":0.0,"max_background":1.0},
+        matrix=matrix, k=max_panel_size,
+        n_bootstrap=bootstrap, validation_candidates=validation_rows,
+    )
+    (Path(output) / "a6_validation.json").write_text(
+        json.dumps(result["a6"], indent=2, default=str), encoding="utf-8"
+    )
+    with (Path(output) / "a6_ablation.csv").open("w", encoding="utf-8", newline="") as h:
+        fields=["ablation","k","coverage","ineligible","unscored"]
+        w=csv.DictWriter(h,fieldnames=fields); w.writeheader()
+        w.writerows(result["a6"]["ablations"])
     return result
 
 def validate_command():
