@@ -44,6 +44,8 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         constraints={"min_detectability":0.0,"max_background":1.0},
         literature_search=literature_search,
     )
+    from wgr_cdp.research.a5_integration import append_a5_to_report
+    append_a5_to_report(output, result["a5"])
     return result
 
 def validate_command():
