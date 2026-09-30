@@ -138,3 +138,37 @@ def test_final_panel_writes_auditable_artifacts(tmp_path: Path):
     text = (tmp_path / "final_panel_candidates.csv").read_text(encoding="utf-8")
     assert "selected" in text.splitlines()[0]
     assert "A" in text
+
+
+def test_final_panel_enforces_pdf_panel_cap_and_reports_diagnostics():
+    candidates = [candidate("A"), candidate("B", .7), candidate("C", .6)]
+    matrix = {
+        "P1": {"A": 1.0, "B": 0.0, "C": 0.0},
+        "P2": {"A": 0.0, "B": 1.0, "C": 0.0},
+        "P3": {"A": 0.0, "B": 0.0, "C": 1.0},
+    }
+    result = build_final_panel(
+        candidates, matrix, max_k=50, weights=W, bootstrap=20,
+        candidate_layers={"A": "SNV", "B": "CNV", "C": "METHYLATION"},
+    )
+    assert result["panel"]["max_k"] == 15
+    assert result["panel"]["k"] <= 15
+    assert result["diagnostics"]["coverage_curve"]
+    assert result["diagnostics"]["greedy_vs_ilp"]["status"] == "Available"
+    assert result["diagnostics"]["panel_bootstrap_stability"]["status"] == "Available"
+    assert result["diagnostics"]["layer_contribution"]["status"] == "Available"
+
+
+def test_final_panel_honors_assay_and_fpr_constraints_before_optimization():
+    candidates = [
+        {**candidate("A"), "constraints": {"assay_ok": False, "fpr_ok": True}},
+        {**candidate("B"), "constraints": {"assay_ok": True, "fpr_ok": False}},
+        {**candidate("C"), "constraints": {"assay_ok": True, "fpr_ok": True}},
+    ]
+    result = build_final_panel(
+        candidates, {"P1": {"A": 1.0, "B": 1.0, "C": 1.0}},
+        max_k=2, weights=W,
+    )
+    assert result["eligible_candidate_ids"] == ["C"]
+    assert result["ineligible_count"] == 2
+    assert result["panel"]["selected"] == ["C"]
