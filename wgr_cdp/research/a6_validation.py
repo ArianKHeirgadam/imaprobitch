@@ -103,6 +103,17 @@ def _ablation_weights(base_weights, name):
         weights=dict(weights)
     return weights
 
+
+def _optimized_selection(ranked, matrix, k):
+    ids=[_id(x) for x in ranked]
+    if not matrix:
+        return ids[:k], "Data unavailable"
+    restricted={p:{c:row.get(c,0) for c in ids if c in row} for p,row in matrix.items()}
+    if not any(restricted.values()):
+        return ids[:k], "Data unavailable"
+    panel=greedy_panel(restricted,max_k=k,min_gain=0)
+    return panel["selected"], "Available"
+
 def run_ablations(candidates, base_weights, constraints=None, matrix=None, k=15):
     constraints=dict(constraints or {})
     output=[]
@@ -114,10 +125,16 @@ def run_ablations(candidates, base_weights, constraints=None, matrix=None, k=15)
         else:
             weights=_ablation_weights(base_weights,name)
         ranking=rank_candidates(candidates,weights,constraints)
-        selected=[_id(x) for x in ranking["ranked"][:k]]
+        ranked_ids=[_id(x) for x in ranking["ranked"]]
+        selection_method="ranked_top_k"
+        if name=="full_wgr_cdp":
+            selected,selection_method=_optimized_selection(ranking["ranked"],matrix,k)
+        else:
+            selected=ranked_ids[:k]
         output.append({
             "ablation":name,"selected":selected,"k":len(selected),
             "coverage":_coverage(matrix,selected),
+            "selection_method":selection_method,
             "ineligible":len(ranking["ineligible"]),
             "unscored":len(ranking["unscored"]),
             "weights":weights,
@@ -153,6 +170,22 @@ def validate_panel(matrix, selected, min_coverage=None):
     return {"status":"Available","coverage":coverage,
             "passes":None if min_coverage is None else coverage>=float(min_coverage)}
 
+
+def evaluate_selected_candidates(selected, validation_candidates):
+    """Re-evaluate discovery-selected candidates against a separate candidate table."""
+    if validation_candidates is None:
+        return {"status":"Data unavailable","selected_n":len(selected)}
+    validation_ids={_id(row) for row in validation_candidates}
+    selected=set(selected)
+    found=selected & validation_ids
+    return {
+        "status":"Available",
+        "selected_n":len(selected),
+        "revalidated_n":len(found),
+        "revalidation_rate":len(found)/len(selected) if selected else None,
+        "revalidated_candidates":sorted(found),
+    }
+
 def run_a6(candidates, weights, constraints=None, matrix=None, k=15,
            n_bootstrap=200, validation_candidates=None, seed=42):
     """Complete A6 evaluation record."""
@@ -161,9 +194,7 @@ def run_a6(candidates, weights, constraints=None, matrix=None, k=15,
     baseline=compare_baseline(candidates,ranking["ranked"],matrix,k)
     ablations=run_ablations(candidates,weights,constraints,matrix,k)
     stability=bootstrap_rank_stability(candidates,weights,constraints,n_bootstrap,k,seed)
-    holdout={"status":"Data unavailable"}
-    if validation_candidates is not None:
-        holdout=validate_holdout(candidates,validation_candidates)
+    holdout=evaluate_selected_candidates([_id(x) for x in ranking["ranked"][:k]], validation_candidates)
     return {
         "status":"Available" if candidates else "Data unavailable",
         "k":int(k),"constraints":constraints,
