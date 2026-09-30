@@ -72,6 +72,12 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     (Path(output) / "a6_validation.json").write_text(
         json.dumps(result["a6"], indent=2, default=str), encoding="utf-8"
     )
+    (Path(output) / "a6_baseline_comparison.json").write_text(
+        json.dumps(result["a6"]["baseline_comparison"], indent=2, default=str), encoding="utf-8"
+    )
+    (Path(output) / "a6_bootstrap_stability.json").write_text(
+        json.dumps(result["a6"]["bootstrap_stability"], indent=2, default=str), encoding="utf-8"
+    )
     with (Path(output) / "a6_ablation.csv").open("w", encoding="utf-8", newline="") as h:
         fields=["ablation","k","coverage","ineligible","unscored"]
         w=csv.DictWriter(h,fieldnames=fields); w.writeheader()
