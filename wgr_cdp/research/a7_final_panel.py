@@ -1,91 +1,259 @@
-"""Phase A7: multimodal evidence integration and final panel design."""
+"""Phase A7: final multimodal candidate integration and panel design.
+
+This module is the terminal research-design layer. It consumes the complete
+auditable candidate evidence table, preserves unavailable measurements, applies
+hard constraints before ranking, and then optimizes patient coverage over the
+full eligible candidate universe when a patient-by-candidate detectability
+matrix is available.
+
+It does not manufacture biological, clinical, or validation evidence.
+"""
 from __future__ import annotations
-import csv, json
+
+import csv
+import json
 from pathlib import Path
+
 from .evidence import rank_candidates
-from .panel_optimizer import greedy_panel, ilp_panel, alpha_budget, panel_coverage
+from .panel_optimizer import alpha_budget, greedy_panel, ilp_panel, panel_coverage
+from .a5_integration import DEFAULT_WEIGHTS
+
 
 def load_multimodal_evidence(path):
-    path=Path(path)
+    path = Path(path)
     if not path.exists():
         return []
-    with path.open(encoding="utf-8-sig",newline="") as h:
-        return list(csv.DictReader(h))
+    with path.open(encoding="utf-8-sig", newline="") as handle:
+        return list(csv.DictReader(handle))
+
 
 def _f(value):
-    try: return float(value)
-    except (TypeError,ValueError): return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _available(row, *names):
+    for name in names:
+        value = _f(row.get(name))
+        if value is not None:
+            return value
+    return None
+
 
 def multimodal_to_candidates(rows):
-    out=[]
+    """Map the real multimodal comparison schema into A5/A7 evidence fields."""
+    out = []
     for row in rows:
-        feature=row.get("feature")
+        feature = row.get("feature")
         if not feature:
             continue
-        diff=_f(row.get("frequency_difference"))
-        detect=_f(row.get("detectability"))
-        bg=_f(row.get("blood_background"))
-        early=_f(row.get("early_stage_fraction"))
-        specificity=_f(row.get("specificity"))
+        diff = _available(row, "frequency_difference", "case_frequency_difference")
+        detect = _available(row, "detectability", "detectability_score", "power")
+        bg = _available(row, "blood_background", "blood_background_max")
+        early = _available(row, "early_stage_fraction", "early_stage_score")
+        specificity = _available(row, "specificity", "specificity_score")
+        q_value = _available(row, "q_value", "fdr", "adjusted_p_value")
+        p_value = _available(row, "p_value")
+        statistical = None if q_value is None else max(0.0, min(1.0, 1.0 - q_value))
         out.append({
-            "candidate_id":str(feature),
-            "feature":str(feature),
-            "gene":row.get("gene") or "",
-            "candidate_type":row.get("feature_type") or "",
-            "biological_evidence":"Data unavailable",
-            "statistical_strength":"Data unavailable",
-            "detectability":detect if detect is not None else "Data unavailable",
-            "blood_background_safety":(max(0.0,min(1.0,1.0-bg)) if bg is not None else "Data unavailable"),
-            "early_stage_score":early if early is not None else "Data unavailable",
-            "specificity_score":specificity if specificity is not None else "Data unavailable",
-            "literature_novelty":"Data unavailable",
-            "literature_validation_gap":"Data unavailable",
-            "literature_diagnostic_utility":"Data unavailable",
-            "frequency_difference":diff,
-            "validation_status":row.get("validation_status") or "Data unavailable",
+            "candidate_id": str(feature),
+            "feature": str(feature),
+            "gene": row.get("gene") or "",
+            "candidate_type": row.get("feature_type") or "",
+            "biological_evidence": _available(row, "biological_evidence"),
+            "statistical_strength": statistical if statistical is not None else "Data unavailable",
+            "detectability": detect if detect is not None else "Data unavailable",
+            "blood_background_safety": (
+                max(0.0, min(1.0, 1.0 - bg)) if bg is not None else "Data unavailable"
+            ),
+            "early_stage_score": early if early is not None else "Data unavailable",
+            "specificity_score": specificity if specificity is not None else "Data unavailable",
+            "literature_novelty": _available(row, "literature_novelty"),
+            "literature_validation_gap": _available(row, "literature_validation_gap"),
+            "literature_diagnostic_utility": _available(row, "literature_diagnostic_utility"),
+            "frequency_difference": diff,
+            "p_value": p_value,
+            "q_value": q_value,
+            "validation_status": row.get("validation_status") or "Data unavailable",
+            "constraints": {
+                "assay_ok": str(row.get("assay_ok", "true")).lower() not in {"false", "0", "no"},
+                "fpr_ok": str(row.get("fpr_ok", "true")).lower() not in {"false", "0", "no"},
+            },
         })
     return out
 
-def build_final_panel(candidates, matrix=None, max_k=15, fpr_target=0.05,
-                      weights=None, constraints=None):
-    weights=weights or {
-        "biological_evidence":1.0,"statistical_strength":1.0,"detectability":1.0,
-        "blood_background_safety":1.0,"early_stage_score":1.0,
-        "specificity_score":1.0,"literature_novelty":1.0,
-        "literature_validation_gap":1.0,"literature_diagnostic_utility":1.0,
-    }
-    constraints=dict(constraints or {"min_detectability":0.0,"max_background":1.0})
-    ranking=rank_candidates(candidates,weights,constraints)
-    ranked=ranking["ranked"][:int(max_k)]
-    ids=[str(x.get("candidate_id") or x.get("feature")) for x in ranked]
-    optimization={"status":"Data unavailable","method":"not_run","selected":ids,"coverage":"Data unavailable","k":len(ids)}
-    if matrix:
-        restricted={p:{c:row.get(c,0) for c in ids if c in row} for p,row in matrix.items()}
-        if any(restricted.values()):
-            optimization=greedy_panel(restricted,max_k=int(max_k),min_gain=0)
-            optimization["status"]="Available"
-            optimization["alpha_per_feature"]=alpha_budget(fpr_target,max(1,optimization["k"]))
+
+def _matrix_for_candidates(matrix, candidate_ids):
+    if not matrix:
+        return None
+    ids = set(candidate_ids)
+    restricted = {}
+    for patient, row in matrix.items():
+        restricted[patient] = {
+            candidate: float(row.get(candidate, 0.0) or 0.0)
+            for candidate in ids
+            if candidate in row
+        }
+    return restricted if any(restricted.values()) else None
+
+
+def _panel_optimize(matrix, max_k, fpr_target):
+    if not matrix:
+        return {
+            "status": "Data unavailable",
+            "method": "not_run",
+            "selected": [],
+            "coverage": "Data unavailable",
+            "k": 0,
+            "alpha_per_feature": None,
+        }
+
+    candidate_count = len({candidate for row in matrix.values() for candidate in row})
+    if candidate_count <= 22:
+        panel = ilp_panel(matrix, max_k=int(max_k), min_gain=0)
+        method = panel.get("method", "exact_0_1")
+        if panel.get("status") == "optimal":
+            selected = panel["selected"]
+            coverage = panel["coverage"]
+        else:
+            fallback = greedy_panel(matrix, max_k=int(max_k), min_gain=0)
+            selected, coverage = fallback["selected"], fallback["coverage"]
+            method = "greedy_fallback"
+    else:
+        fallback = greedy_panel(matrix, max_k=int(max_k), min_gain=0)
+        selected, coverage = fallback["selected"], fallback["coverage"]
+        method = "greedy"
+
+    k = len(selected)
     return {
-        "status":"Available" if candidates else "Data unavailable",
-        "constraints":constraints,
-        "candidate_count":len(candidates),
-        "eligible_count":len(ranking["ranked"]),
-        "ineligible_count":len(ranking["ineligible"]),
-        "unscored_count":len(ranking["unscored"]),
-        "ranked_candidates":ids,
-        "panel":optimization,
-        "fpr_target":float(fpr_target),
+        "status": "Available",
+        "method": method,
+        "selected": selected,
+        "coverage": coverage,
+        "k": k,
+        "alpha_per_feature": alpha_budget(fpr_target, max(1, k)),
+        "candidate_universe_n": candidate_count,
     }
 
-def write_final_panel(output_dir, candidates, matrix=None, max_k=15, fpr_target=0.05,
-                      weights=None, constraints=None):
-    output=Path(output_dir); output.mkdir(parents=True,exist_ok=True)
-    result=build_final_panel(candidates,matrix,max_k,fpr_target,weights,constraints)
-    (output/"final_panel.json").write_text(json.dumps(result,indent=2,default=str),encoding="utf-8")
-    fields=["rank","candidate_id","feature","gene","candidate_type","detectability","blood_background_safety","early_stage_score","specificity_score","research_score","score_status"]
-    with (output/"final_panel_candidates.csv").open("w",encoding="utf-8",newline="") as h:
-        w=csv.DictWriter(h,fieldnames=fields,extrasaction="ignore"); w.writeheader()
-        ranking=rank_candidates(candidates,weights or {},constraints or {"min_detectability":0.0,"max_background":1.0})["ranked"][:int(max_k)]
-        for i,row in enumerate(ranking,1):
-            x=dict(row); x["rank"]=i; w.writerow(x)
+
+def build_final_panel(
+    candidates,
+    matrix=None,
+    max_k=15,
+    fpr_target=0.05,
+    weights=None,
+    constraints=None,
+):
+    """Produce the final ranked candidate set and complementary coverage panel."""
+    weights = dict(weights or DEFAULT_WEIGHTS)
+    constraints = dict(constraints or {"min_detectability": 0.0, "max_background": 1.0})
+
+    ranking = rank_candidates(candidates, weights, constraints)
+    eligible = ranking["ranked"]
+    eligible_ids = [
+        str(row.get("candidate_id") or row.get("feature") or row.get("candidate"))
+        for row in eligible
+    ]
+
+    # Optimize across the entire eligible universe, not merely the first K ranks.
+    restricted = _matrix_for_candidates(matrix, eligible_ids)
+    optimization = _panel_optimize(restricted, max_k, fpr_target)
+
+    if optimization["status"] == "Available":
+        selected_ids = optimization["selected"]
+    else:
+        selected_ids = eligible_ids[: int(max_k)]
+
+    # Keep the ranking visible independently from the optimized panel.
+    ranked_top_k = eligible_ids[: int(max_k)]
+    selected_coverage = (
+        panel_coverage(restricted, selected_ids)
+        if restricted is not None
+        else "Data unavailable"
+    )
+
+    return {
+        "status": "Available" if candidates else "Data unavailable",
+        "constraints": constraints,
+        "weights": weights,
+        "candidate_count": len(candidates),
+        "eligible_count": len(eligible),
+        "ineligible_count": len(ranking["ineligible"]),
+        "unscored_count": len(ranking["unscored"]),
+        "ranked_candidates": ranked_top_k,
+        "eligible_candidate_ids": eligible_ids,
+        "panel": {
+            **optimization,
+            "selected": selected_ids,
+            "coverage": selected_coverage,
+        },
+        "fpr_target": float(fpr_target),
+    }
+
+
+def write_final_panel(
+    output_dir,
+    candidates,
+    matrix=None,
+    max_k=15,
+    fpr_target=0.05,
+    weights=None,
+    constraints=None,
+):
+    output = Path(output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+    weights = dict(weights or DEFAULT_WEIGHTS)
+    constraints = dict(constraints or {"min_detectability": 0.0, "max_background": 1.0})
+
+    result = build_final_panel(
+        output_dir,
+        max_k=max_k,
+        fpr_target=fpr_target,
+        weights=weights,
+        constraints=constraints,
+        matrix=matrix,
+    ) if False else build_final_panel(
+        candidates,
+        matrix=matrix,
+        max_k=max_k,
+        fpr_target=fpr_target,
+        weights=weights,
+        constraints=constraints,
+    )
+
+    (output / "final_panel.json").write_text(
+        json.dumps(result, indent=2, default=str), encoding="utf-8"
+    )
+
+    ranking = rank_candidates(candidates, weights, constraints)
+    selected = set(result["panel"]["selected"])
+    fields = [
+        "rank", "selected", "candidate_id", "feature", "gene", "candidate_type",
+        "p_value", "q_value", "detectability", "blood_background_safety",
+        "early_stage_score", "specificity_score", "research_score", "score_status",
+    ]
+    with (output / "final_panel_candidates.csv").open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
+        writer.writeheader()
+        for index, row in enumerate(ranking["ranked"], 1):
+            item = dict(row)
+            item["rank"] = index
+            item["selected"] = str(item.get("candidate_id") or item.get("feature")) in selected
+            writer.writerow(item)
+
+    (output / "final_panel_constraints.json").write_text(
+        json.dumps({
+            "constraints": constraints,
+            "fpr_target": float(fpr_target),
+            "max_k": int(max_k),
+            "weights": weights,
+            "candidate_count": len(candidates),
+            "eligible_count": len(ranking["ranked"]),
+            "ineligible_count": len(ranking["ineligible"]),
+            "unscored_count": len(ranking["unscored"]),
+        }, indent=2, default=str),
+        encoding="utf-8",
+    )
     return result
