@@ -29,11 +29,20 @@ def estimate_background(rows, key="region", sources=None):
             if value is not None:
                 grouped[feature][source].append(value)
     output = {}
-    for feature, source_rows in grouped.items():
+    # Emit every observed feature even when all requested background sources
+    # are unavailable. Missing source evidence is explicit, never negative.
+    observed_features = {str(row.get(key, "")) for row in rows}
+    for feature in sorted(observed_features):
+        source_rows = grouped.get(feature, {})
         output[feature] = {}
         for source in sources:
             values = source_rows.get(source, [])
-            output[feature][source] = {"n": len(values), "mean": sum(values) / len(values) if values else None, "max": max(values) if values else None, "status": "Available" if values else "Data unavailable"}
+            output[feature][source] = {
+                "n": len(values),
+                "mean": sum(values) / len(values) if values else None,
+                "max": max(values) if values else None,
+                "status": "Available" if values else "Data unavailable",
+            }
     return output
 
 def _row_background(row, background):
