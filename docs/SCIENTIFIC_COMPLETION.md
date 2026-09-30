@@ -21,3 +21,32 @@ Scientific boundary:
 These modules do not manufacture biological results. Synthetic tests validate software behavior only. Plasma validation, clinical sensitivity/specificity, AUC, and assay-specific LoD remain Data unavailable unless real validation data are supplied.
 
 The exact 0/1 optimizer is mathematically exact for small candidate sets; large candidate spaces should use a dedicated ILP solver under a locked environment.
+
+## Phase A1 — Multi-Resolution Scientific Scanner
+
+Phase A1 implements the PDF-defined WGR-CDP coarse-to-fine discovery path:
+
+- 5 Mb -> 1 Mb -> 100 kb -> 10 kb -> 1 kb -> base/breakpoint.
+- SNV/INDEL screening uses patient recurrence and variant-density evidence.
+- CNV uses log2-ratio/segment-mean measurements when available.
+- Methylation uses beta/M-value measurements when available.
+- Mitochondrial features use heteroplasmy/copy-number measurements when available.
+- Each retained region carries an auditable parent-to-child lineage.
+- Retained regions expand by configurable +/- k neighboring bins before the next resolution.
+- Every retained native feature is independently exact-checked.
+- Exact p-values are FDR-adjusted; final significance is reported separately from retention.
+- The scanner is deterministic and dependency-light.
+
+Phase A1 acceptance criteria:
+1. All six resolutions are represented in the output.
+2. Feature-specific statistics are selected from the appropriate measurement model.
+3. Tumor/control differences and effect sizes are retained in the discovery lineage.
+4. Neighbor expansion is configurable and auditable.
+5. Exact validation is independent of coarse screening significance.
+6. Final q-values are recalculated over the exact validation set.
+7. Existing scientific completion tests remain compatible.
+
+Scientific boundary:
+A1 validates the discovery computation and its software behavior. It does not claim
+biological significance, clinical utility, diagnostic sensitivity/specificity, or
+independent-cohort performance without real data.
