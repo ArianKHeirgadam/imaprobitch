@@ -138,3 +138,48 @@ def test_blood_background_source_separation():
     assert kept[0]["blood_background_status"] == "Data unavailable"
     annotated = annotate_background_sources([{"region": "1:100-100"}], background)
     assert annotated[0]["blood_background_sources"]["chip"]["max"] == 0.20
+
+def test_pdf_requirements_a1_a3():
+    from wgr_cdp.research.multires_scanner import exact_scan, coarse_to_fine_scan
+    from wgr_cdp.research.benchmark import benchmark_summary
+    from wgr_cdp.research.blood_background import estimate_background
+
+    exact_a = exact_scan(rows())
+    exact_b = exact_scan(rows())
+    assert exact_a == exact_b
+    result = coarse_to_fine_scan(rows())
+    assert all(item["exact_checked"] for item in result["final"])
+    assert set(result["resolutions"]) == {"5Mb", "1Mb", "100kb", "10kb", "1kb", "base"}
+    assert all("parent_region" in item and "screening_effect" in item for item in result["lineage"])
+    summary = benchmark_summary(exact_scan, coarse_to_fine_scan, rows())
+    assert "fast_resolution_evaluated" in summary
+    assert summary["by_feature_type"]["SNV"]["recall"] >= 0
+    bg = estimate_background([{"region":"1:1-10","wbc":0.01,"feature_type":"METHYLATION"},
+                              {"region":"1:1-10","chip":0.02,"feature_type":"CNV"}])
+    assert bg["1:1-10"]["wbc"]["status"] == "Available"
+    assert bg["1:1-10"]["pon"]["status"] == "Data unavailable"
+
+
+def test_pdf_phase_a4_cfdna_requirements():
+    from wgr_cdp.research.cfdna import DEFAULT_TUMOR_FRACTIONS, patient_candidate_matrix
+    from wgr_cdp.research.cfdna_score_engine import detectability_score, REQUIRED_TUMOR_FRACTIONS
+    from wgr_cdp.research.cfdna_simulator import simulate_detectability, validate_analytical_against_simulation
+
+    assert DEFAULT_TUMOR_FRACTIONS == (0.5,0.2,0.1,0.05,0.02,0.01,0.005)
+    assert REQUIRED_TUMOR_FRACTIONS == DEFAULT_TUMOR_FRACTIONS
+    score = detectability_score(.01, depth=50, region_size=100, informative_sites=4,
+                                 copy_number=2, error_rate=.001, blood_background=.02,
+                                 feature_type="SNV")
+    assert 0 <= score["detectability_score"] <= 1
+    assert score["region_size"] == 100
+    assert score["assay_feasibility"] == "limited_low_pass_SNV_INDEL"
+    analytical = score["detectability_score"]
+    simulated = simulate_detectability(.01, depth=50, informative_sites=4, simulations=2000, seed=7)
+    check = validate_analytical_against_simulation(analytical, simulated["power"], tolerance=.10)
+    assert check["within_tolerance"]
+    matrix = patient_candidate_matrix(
+        ["P1","P2"], ["c1"],
+        {"P1":{"c1":{"present":False}}, "P2":{"c1":{"tumor_fraction":.05,"depth":300}}},
+    )
+    assert matrix["P1"]["c1"] == 0.0
+    assert matrix["P2"]["c1"] > 0
