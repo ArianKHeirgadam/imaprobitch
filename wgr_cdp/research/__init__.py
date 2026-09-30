@@ -6,6 +6,11 @@ from .validation import AnalysisState, LeakageGuard, bootstrap_selection, cohort
 from .statistics import benjamini_hochberg, fisher_exact_2x2, per_feature_alpha, cohen_h
 from .cfdna_score_engine import detectability_score
 from .cfdna_simulator import simulate_detectability, validate_analytical_against_simulation
+from .evidence import normalize_evidence, apply_constraints, transparent_weighted_score, rank_candidates
+from .literature_whitespace import build_queries, search_pubmed, literature_record, summarize_whitespace
+from .early_stage import stage_candidate_rates, early_stage_score
+from .specificity import specificity_rates, specificity_score
+from .sensitivity_analysis import normalize_weights, weight_sensitivity, selection_stability
 
 __all__ = [
     "detectability_probability","power_curve","estimate_lod","patient_candidate_matrix",
@@ -13,4 +18,8 @@ __all__ = [
     "alpha_budget","AnalysisState","LeakageGuard","bootstrap_selection",
     "cohort_holdout_guard","benjamini_hochberg","fisher_exact_2x2",
     "per_feature_alpha","cohen_h","detectability_score","simulate_detectability","validate_analytical_against_simulation",
+    "normalize_evidence","apply_constraints","transparent_weighted_score","rank_candidates",
+    "build_queries","search_pubmed","literature_record","summarize_whitespace",
+    "stage_candidate_rates","early_stage_score","specificity_rates","specificity_score",
+    "normalize_weights","weight_sensitivity","selection_stability",
 ]
