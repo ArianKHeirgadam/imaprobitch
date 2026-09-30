@@ -26,3 +26,18 @@ https://www.ncbi.nlm.nih.gov/books/NBK25499/
 
 ## Scientific limitation
 A5 does not claim novelty, clinical utility, or absence of literature globally. Those conclusions require actual searches and manual review of retrieved literature.
+
+## End-to-end integration
+
+The CLI now executes A5 after the existing real cohort/CNV analysis. Every run writes:
+
+- `candidate_evidence.csv`
+- `candidate_constraints.json`
+- `literature_whitespace.json`
+- `ranking_sensitivity.json`
+
+The evidence layer consumes the actual discovery candidates and CNV candidates produced by the run; it does not create a separate synthetic candidate universe.
+
+The CLI option `--literature-search` explicitly enables live PubMed ESearch. Without that flag, literature counts remain `Data unavailable` and the run records that no search was performed.
+
+A5 remains research prioritization only. It does not convert evidence scores into diagnostic probabilities or clinical claims.
