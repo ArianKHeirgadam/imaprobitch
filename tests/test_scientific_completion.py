@@ -118,3 +118,23 @@ def test_benchmark_and_sweep():
     assert len(sweep) == 3
     assert all("fast_runtime_s" in item and "recall" in item for item in sweep)
     assert recall_vs_cost(sweep)
+
+
+def test_blood_background_source_separation():
+    from wgr_cdp.research.blood_background import estimate_background, filter_candidates, annotate_background_sources
+    data = [
+        {"region": "1:100-100", "healthy_plasma": 0.02, "wbc": 0.01, "gnomad": 0.005},
+        {"region": "1:100-100", "healthy_plasma": 0.03, "chip": 0.20},
+        {"region": "1:200-200"},
+    ]
+    background = estimate_background(data)
+    assert background["1:100-100"]["healthy_plasma"]["max"] == 0.03
+    assert background["1:100-100"]["wbc"]["status"] == "Available"
+    assert background["1:100-100"]["pon"]["status"] == "Data unavailable"
+    assert background["1:200-200"]["wbc"]["status"] == "Data unavailable"
+    kept, rejected = filter_candidates([{"region": "1:100-100"}, {"region": "1:200-200"}], background, max_background=0.10)
+    assert len(kept) == 1
+    assert len(rejected) == 1
+    assert kept[0]["blood_background_status"] == "Data unavailable"
+    annotated = annotate_background_sources([{"region": "1:100-100"}], background)
+    assert annotated[0]["blood_background_sources"]["chip"]["max"] == 0.20
