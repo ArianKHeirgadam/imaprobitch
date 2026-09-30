@@ -15,7 +15,16 @@ import json
 from pathlib import Path
 
 from .evidence import rank_candidates
-from .panel_optimizer import alpha_budget, greedy_panel, ilp_panel, panel_coverage
+from .panel_optimizer import (
+    alpha_budget,
+    greedy_panel,
+    ilp_panel,
+    panel_coverage,
+    coverage_curve,
+    greedy_vs_ilp,
+    panel_bootstrap_stability,
+    layer_contribution,
+)
 from .a5_integration import DEFAULT_WEIGHTS
 
 
@@ -99,7 +108,7 @@ def _matrix_for_candidates(matrix, candidate_ids):
     return restricted if any(restricted.values()) else None
 
 
-def _panel_optimize(matrix, max_k, fpr_target):
+def _panel_optimize(matrix, max_k, fpr_target, min_gain=0.02):
     if not matrix:
         return {
             "status": "Data unavailable",
@@ -112,17 +121,17 @@ def _panel_optimize(matrix, max_k, fpr_target):
 
     candidate_count = len({candidate for row in matrix.values() for candidate in row})
     if candidate_count <= 22:
-        panel = ilp_panel(matrix, max_k=int(max_k), min_gain=0)
+        panel = ilp_panel(matrix, max_k=min(15, int(max_k)), min_gain=float(min_gain))
         method = panel.get("method", "exact_0_1")
         if panel.get("status") == "optimal":
             selected = panel["selected"]
             coverage = panel["coverage"]
         else:
-            fallback = greedy_panel(matrix, max_k=int(max_k), min_gain=0)
+            fallback = greedy_panel(matrix, max_k=min(15, int(max_k)), min_gain=float(min_gain))
             selected, coverage = fallback["selected"], fallback["coverage"]
             method = "greedy_fallback"
     else:
-        fallback = greedy_panel(matrix, max_k=int(max_k), min_gain=0)
+        fallback = greedy_panel(matrix, max_k=min(15, int(max_k)), min_gain=float(min_gain))
         selected, coverage = fallback["selected"], fallback["coverage"]
         method = "greedy"
 
@@ -145,6 +154,9 @@ def build_final_panel(
     fpr_target=0.05,
     weights=None,
     constraints=None,
+    min_gain=0.02,
+    bootstrap=200,
+    candidate_layers=None,
 ):
     """Produce the final ranked candidate set and complementary coverage panel."""
     weights = dict(weights or DEFAULT_WEIGHTS)
@@ -159,7 +171,19 @@ def build_final_panel(
 
     # Optimize across the entire eligible universe, not merely the first K ranks.
     restricted = _matrix_for_candidates(matrix, eligible_ids)
-    optimization = _panel_optimize(restricted, max_k, fpr_target)
+    effective_k = min(15, max(0, int(max_k)))
+    optimization = _panel_optimize(restricted, effective_k, fpr_target, min_gain=min_gain)
+
+    diagnostics = {
+        "coverage_curve": coverage_curve(restricted, effective_k, min_gain=min_gain) if restricted else "Data unavailable",
+        "greedy_vs_ilp": greedy_vs_ilp(restricted, effective_k, min_gain=min_gain) if restricted else "Data unavailable",
+        "panel_bootstrap_stability": panel_bootstrap_stability(restricted, effective_k, bootstrap, 42) if restricted else "Data unavailable",
+        "layer_contribution": layer_contribution(
+            restricted,
+            optimization.get("selected", []),
+            candidate_layers or {},
+        ) if restricted and candidate_layers else "Data unavailable",
+    }
 
     if optimization["status"] == "Available":
         selected_ids = optimization["selected"]
@@ -188,7 +212,10 @@ def build_final_panel(
             **optimization,
             "selected": selected_ids,
             "coverage": selected_coverage,
+            "max_k": effective_k,
+            "min_marginal_gain": float(min_gain),
         },
+        "diagnostics": diagnostics,
         "fpr_target": float(fpr_target),
     }
 
@@ -201,6 +228,9 @@ def write_final_panel(
     fpr_target=0.05,
     weights=None,
     constraints=None,
+    min_gain=0.02,
+    bootstrap=200,
+    candidate_layers=None,
 ):
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -214,6 +244,9 @@ def write_final_panel(
         fpr_target=fpr_target,
         weights=weights,
         constraints=constraints,
+        min_gain=min_gain,
+        bootstrap=bootstrap,
+        candidate_layers=candidate_layers,
     )
 
     (output / "final_panel.json").write_text(
@@ -236,11 +269,18 @@ def write_final_panel(
             item["selected"] = str(item.get("candidate_id") or item.get("feature")) in selected
             writer.writerow(item)
 
+    (output / "final_panel_diagnostics.json").write_text(
+        json.dumps(result.get("diagnostics", {}), indent=2, default=str),
+        encoding="utf-8",
+    )
+
     (output / "final_panel_constraints.json").write_text(
         json.dumps({
             "constraints": constraints,
             "fpr_target": float(fpr_target),
-            "max_k": int(max_k),
+            "max_k": min(15, int(max_k)),
+            "min_marginal_gain": float(min_gain),
+            "bootstrap": int(bootstrap),
             "weights": weights,
             "candidate_count": len(candidates),
             "eligible_count": len(ranking["ranked"]),
