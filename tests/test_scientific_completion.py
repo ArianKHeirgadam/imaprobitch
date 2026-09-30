@@ -150,7 +150,7 @@ def test_pdf_requirements_a1_a3():
     result = coarse_to_fine_scan(rows())
     assert all(item["exact_checked"] for item in result["final"])
     assert set(result["resolutions"]) == {"5Mb", "1Mb", "100kb", "10kb", "1kb", "base"}
-    assert all("parent_region" in item and "screening_effect" in item for item in result["lineage"])
+    assert all("parent_region" in item and "screening_effect" in item and "preliminary_detectability" in item for item in result["lineage"])
     summary = benchmark_summary(exact_scan, coarse_to_fine_scan, rows())
     assert "fast_resolution_evaluated" in summary
     assert summary["by_feature_type"]["SNV"]["recall"] >= 0
