@@ -294,7 +294,7 @@ def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1):
 
     for level_index, size in enumerate(RESOLUTIONS[:-1]):
         next_active = set()
-        for region, feature_type in sorted(active):
+        for region, feature_type, parent_region in sorted(active):
             stats = _coarse_region_stats(rows, region, feature_type)
             if stats is None:
                 continue
@@ -305,9 +305,9 @@ def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1):
                 "resolution_bp": size,
                 "region": region,
                 "feature_type": feature_type,
-                "effect_size": float(stats["effect_size"]),
+                "effect_size": float(stats["effect_size"]),\n                "screening_effect": screening_effect,
                 "p_value": float(stats["p_value"]),
-                "retained": retained_here,
+                "retained": retained_here,\n                "parent_region": parent_region,
                 "case_frequency": stats.get("case_frequency"),
                 "control_frequency": stats.get("control_frequency"),
                 "case_mean": stats.get("case_mean"),
@@ -323,7 +323,7 @@ def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1):
             retained.add((region, feature_type))
             child_size = RESOLUTIONS[level_index + 1]
             for child in _neighbor_regions(region, child_size, neighbor_k):
-                next_active.add((child, feature_type))
+                next_active.add((child, feature_type, region))
         active = next_active
         if not active:
             break
