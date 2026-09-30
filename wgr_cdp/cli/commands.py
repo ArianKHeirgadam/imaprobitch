@@ -1,5 +1,6 @@
 """Command implementations for WGR-CDP."""
 import csv
+import json
 from pathlib import Path
 from wgr_cdp.application.analysis import analyze_cohorts
 from wgr_cdp.release.health import run_health_check
@@ -37,6 +38,10 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     from wgr_cdp.research.a5_integration import write_a5_artifacts
     a5_candidates=list(result.get("candidates",[]))
     a5_candidates.extend(cnv_candidates)
+    if features:
+        from wgr_cdp.research.a7_final_panel import load_multimodal_evidence, multimodal_to_candidates
+        mm_rows=load_multimodal_evidence(Path(output)/"multimodal"/"multimodal_cohort_comparison.csv")
+        a5_candidates.extend(multimodal_to_candidates(mm_rows))
     result["a5"]=write_a5_artifacts(
         output,
         a5_candidates,
@@ -78,6 +83,15 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     (Path(output) / "a6_bootstrap_stability.json").write_text(
         json.dumps(result["a6"]["bootstrap_stability"], indent=2, default=str), encoding="utf-8"
     )
+    from wgr_cdp.research.a7_final_panel import write_final_panel
+    result["a7"] = write_final_panel(
+        output, a5_candidates, matrix=matrix, max_k=max_panel_size,
+        fpr_target=alpha,
+        constraints={"min_detectability":0.0,"max_background":1.0},
+    )
+    append_a5_to_report(output, {"ranked_count":result["a7"]["eligible_count"],
+                                 "ineligible_count":result["a7"]["ineligible_count"],
+                                 "unscored_count":result["a7"]["unscored_count"]})
     with (Path(output) / "a6_ablation.csv").open("w", encoding="utf-8", newline="") as h:
         fields=["ablation","k","coverage","ineligible","unscored"]
         w=csv.DictWriter(h,fieldnames=fields); w.writeheader()
