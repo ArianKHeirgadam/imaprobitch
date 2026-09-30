@@ -89,9 +89,8 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         fpr_target=alpha,
         constraints={"min_detectability":0.0,"max_background":1.0},
     )
-    append_a5_to_report(output, {"ranked_count":result["a7"]["eligible_count"],
-                                 "ineligible_count":result["a7"]["ineligible_count"],
-                                 "unscored_count":result["a7"]["unscored_count"]})
+    from wgr_cdp.research.a7_final_panel import append_a7_to_report
+    append_a7_to_report(output, result["a7"])
     with (Path(output) / "a6_ablation.csv").open("w", encoding="utf-8", newline="") as h:
         fields=["ablation","k","coverage","ineligible","unscored"]
         w=csv.DictWriter(h,fieldnames=fields); w.writeheader()
