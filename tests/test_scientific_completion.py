@@ -89,3 +89,32 @@ def test_leakage():
         assert False
     except ValueError:
         pass
+
+
+def test_benchmark_and_sweep():
+    from wgr_cdp.research.benchmark import benchmark, benchmark_by_feature, parameter_sweep, recall_vs_cost
+
+    def exact(data):
+        return exact_scan(data)
+
+    def fast(data):
+        return coarse_to_fine_scan(data)
+
+    result = benchmark(exact, fast, rows())
+    assert {"recall", "precision", "exact_runtime_s", "fast_runtime_s",
+            "exact_peak_bytes", "fast_peak_bytes", "tp", "fp", "fn"} <= result.keys()
+    assert 0 <= result["recall"] <= 1
+    assert 0 <= result["precision"] <= 1
+
+    by_feature = benchmark_by_feature(exact, fast, rows())
+    assert "SNV" in by_feature
+
+    sweep = parameter_sweep(
+        exact,
+        lambda threshold: lambda data: coarse_to_fine_scan(data, effect_threshold=threshold),
+        rows(),
+        [0.0, 0.1, 0.2],
+    )
+    assert len(sweep) == 3
+    assert all("fast_runtime_s" in item and "recall" in item for item in sweep)
+    assert recall_vs_cost(sweep)
