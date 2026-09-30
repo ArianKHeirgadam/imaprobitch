@@ -96,3 +96,28 @@ Acceptance criteria:
 4. Missing/patient-absent candidates can be represented as zero detectability.
 5. Low-pass SNV/INDEL limitations are explicit.
 6. No clinical interpretation is inferred from the score.
+
+
+## Phase A5 — Candidate Evidence, Literature Whitespace, and Sensitivity
+
+A5 adds an auditable candidate-evidence layer after discovery and cfDNA feasibility:
+
+- separate biological, statistical, detectability, blood-background, early-stage, specificity, and literature evidence fields;
+- hard assay/FPR/detectability/background constraints are applied before ranking;
+- transparent weighted scoring records the fields actually used and preserves Data unavailable;
+- Stage I-II versus III-IV evidence can be summarized without inventing missing stage labels;
+- healthy and supplied differential comparator groups can be evaluated separately;
+- reproducible PubMed query templates and optional live ESearch records store exact query, source, date, result count, and status;
+- literature novelty, validation gap, and diagnostic utility remain separate evidence types;
+- weight sensitivity scenarios and selection stability are available for audit.
+
+A5 does not claim that a candidate is novel, clinically useful, or globally absent from the literature. Those conclusions require actual literature retrieval and manual review. NCBI documents ESearch as the Entrez text-query interface used by the optional PubMed search layer.
+
+Acceptance criteria:
+1. Missing evidence is never silently converted to zero.
+2. Hard constraints exclude ineligible candidates before eligible ranking.
+3. Weighted scores expose the evidence fields used.
+4. Stage and comparator analyses preserve missing-data semantics.
+5. Literature records are reproducible and auditable.
+6. Sensitivity analysis reports ranking changes across explicit weight scenarios.
+7. Existing A1-A4 behavior remains unchanged.
