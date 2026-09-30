@@ -223,3 +223,20 @@ A7 artifacts:
 The final panel remains a computational research-design output. It does not by
 itself establish clinical sensitivity, specificity, AUC, prospective utility,
 or assay LoD.
+
+
+### A7 completion audit addendum
+
+The final-panel layer additionally exposes:
+- an explicit K <= 15 cap;
+- a configurable marginal-coverage stopping threshold (default 0.02);
+- coverage-versus-K and marginal-gain diagnostics;
+- greedy-versus-exact optimization comparison where exact optimization is feasible;
+- bootstrap panel-selection stability with an explicit seed;
+- optional per-layer contribution analysis;
+- hard assay/FPR constraints before panel optimization;
+- final_panel_diagnostics.json as a machine-readable audit artifact.
+
+Literature search now supports both PubMed and Europe PMC as separate, source-labelled records. Logistic and elastic-net baseline helpers are available when labelled data are actually supplied; without labels they remain Data unavailable.
+
+These additions are additive and do not replace the previously validated A1-A6 APIs.
