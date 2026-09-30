@@ -84,10 +84,18 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         json.dumps(result["a6"]["bootstrap_stability"], indent=2, default=str), encoding="utf-8"
     )
     from wgr_cdp.research.a7_final_panel import write_final_panel
+    candidate_layers = {
+        str(row.get("candidate_id") or row.get("feature") or row.get("candidate")):
+        str(row.get("candidate_type") or row.get("feature_type") or "Data unavailable")
+        for row in a5_candidates
+    }
     result["a7"] = write_final_panel(
-        output, a5_candidates, matrix=matrix, max_k=max_panel_size,
+        output, a5_candidates, matrix=matrix, max_k=min(15, max_panel_size),
         fpr_target=alpha,
         constraints={"min_detectability":0.0,"max_background":1.0},
+        min_gain=0.02,
+        bootstrap=200,
+        candidate_layers=candidate_layers,
     )
     from wgr_cdp.research.a7_final_panel import append_a7_to_report
     append_a7_to_report(output, result["a7"])
