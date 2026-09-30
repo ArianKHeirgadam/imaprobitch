@@ -33,3 +33,88 @@ def ilp_panel(matrix,max_k=15,min_gain=0,max_candidates=22):
     return {"method":"exact_0_1","status":"optimal","selected":list(best[1]),"coverage":best[0],"k":len(best[1])}
 
 def alpha_budget(fpr_target,k): return per_feature_alpha(fpr_target,k)
+
+def coverage_curve(matrix, max_k=15, min_gain=0.02):
+    """Return coverage and marginal gain for each panel size."""
+    if not matrix:
+        return []
+    max_k = min(15, max(0, int(max_k)))
+    candidates = sorted({c for row in matrix.values() for c in row})
+    selected = []
+    previous = 0.0
+    curve = []
+    while candidates and len(selected) < max_k:
+        best = max(candidates, key=lambda c: (panel_coverage(matrix, selected + [c]), c))
+        coverage = panel_coverage(matrix, selected + [best])
+        gain = coverage - previous
+        if selected and gain < float(min_gain):
+            break
+        selected.append(best)
+        candidates.remove(best)
+        curve.append({"k": len(selected), "candidate": best, "coverage": coverage, "marginal_gain": gain})
+        previous = coverage
+    return curve
+
+
+def greedy_vs_ilp(matrix, max_k=15, min_gain=0.02):
+    """Compare deterministic greedy selection with exact 0/1 optimization when feasible."""
+    if not matrix:
+        return {"status": "Data unavailable"}
+    greedy = greedy_panel(matrix, max_k=min(15, int(max_k)), min_gain=min_gain)
+    exact = ilp_panel(matrix, max_k=min(15, int(max_k)), min_gain=min_gain)
+    return {
+        "status": "Available",
+        "greedy": greedy,
+        "ilp": exact,
+        "coverage_delta_ilp_minus_greedy": (
+            float(exact["coverage"]) - float(greedy["coverage"])
+            if exact.get("status") == "optimal" else "Data unavailable"
+        ),
+    }
+
+
+def panel_bootstrap_stability(matrix, max_k=15, n_bootstrap=200, seed=42):
+    """Bootstrap patient rows and measure how often each candidate is selected."""
+    if not matrix:
+        return {"status": "Data unavailable", "n_bootstrap": 0, "selection_frequency": {}}
+    from random import Random
+    rows = list(matrix.items())
+    if not rows:
+        return {"status": "Data unavailable", "n_bootstrap": 0, "selection_frequency": {}}
+    rng = Random(seed)
+    counts = {}
+    for _ in range(int(n_bootstrap)):
+        sample_rows = [rows[rng.randrange(len(rows))] for _ in rows]
+        sample = {f"boot_{i}": row for i, (_, row) in enumerate(sample_rows)}
+        selected = greedy_panel(sample, max_k=min(15, int(max_k)), min_gain=0.02)["selected"]
+        for candidate in selected:
+            counts[candidate] = counts.get(candidate, 0) + 1
+    total = int(n_bootstrap)
+    return {
+        "status": "Available",
+        "n_bootstrap": total,
+        "max_k": min(15, int(max_k)),
+        "seed": int(seed),
+        "selection_frequency": {k: v / total for k, v in sorted(counts.items())},
+    }
+
+
+def layer_contribution(matrix, selected, candidate_layers):
+    """Measure marginal coverage contribution by feature layer/type."""
+    if not matrix:
+        return {"status": "Data unavailable"}
+    baseline = panel_coverage(matrix, selected)
+    grouped = {}
+    for candidate in selected:
+        layer = str(candidate_layers.get(candidate, "Data unavailable"))
+        grouped.setdefault(layer, []).append(candidate)
+    result = {}
+    for layer, members in grouped.items():
+        without = [c for c in selected if c not in members]
+        result[layer] = {
+            "selected_n": len(members),
+            "coverage_with_layer": baseline,
+            "coverage_without_layer": panel_coverage(matrix, without),
+            "marginal_contribution": baseline - panel_coverage(matrix, without),
+        }
+    return {"status": "Available", "baseline_coverage": baseline, "layers": result}
