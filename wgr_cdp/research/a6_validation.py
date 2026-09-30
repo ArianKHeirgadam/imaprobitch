@@ -73,13 +73,15 @@ def compare_baseline(candidates, wgr_ranked, matrix=None, k=15):
     """Run conventional baseline and WGR ranking on identical candidates."""
     baseline,runtime_base,memory_base=_timed(conventional_feature_ranking,candidates,k)
     wgr=wgr_ranked[:max(0,int(k))]
+    _,runtime_wgr,memory_wgr=_timed(lambda: list(wgr))
     metrics=overlap_metrics(baseline,wgr)
+    metrics["interpretation"]="selection_overlap_not_predictive_performance"
     return {
         "baseline":{"method":"conventional_feature_ranking","selected":[_id(x) for x in baseline],
                     "runtime_s":runtime_base,"peak_bytes":memory_base,
                     "coverage":_coverage(matrix,[_id(x) for x in baseline])},
         "wgr_cdp":{"method":"integrated_evidence_ranking","selected":[_id(x) for x in wgr],
-                   "coverage":_coverage(matrix,[_id(x) for x in wgr])},
+                   "coverage":_coverage(matrix,[_id(x) for x in wgr]),"runtime_s":runtime_wgr,"peak_bytes":memory_wgr},
         "overlap":metrics,
         "status":"Available" if candidates else "Data unavailable",
     }
