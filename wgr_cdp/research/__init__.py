@@ -23,3 +23,4 @@ __all__ = [
     "stage_candidate_rates","early_stage_score","specificity_rates","specificity_score",
     "normalize_weights","weight_sensitivity","selection_stability",
 ]
+from .a5_integration import write_a5_artifacts, DEFAULT_WEIGHTS
