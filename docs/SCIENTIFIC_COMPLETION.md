@@ -74,3 +74,25 @@ Acceptance criteria:
 5. Parameter sweeps are reproducible from explicit parameters.
 6. Recall-vs-cost output exposes the measured frontier.
 7. Synthetic tests are not presented as biological validation.
+
+
+## Phase A4 — cfDNA Detectability
+
+A4 now provides:
+- the required tumor-fraction grid: 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005;
+- analytical power and computational LoD;
+- region size and informative-site parameters;
+- copy number, sequencing depth, assay error and blood-background penalty;
+- patient-specific candidate detectability inputs;
+- Monte-Carlo simulation for analytical-model validation;
+- explicit low-pass SNV/INDEL feasibility metadata rather than assuming reliable detection.
+
+A4 remains a computational research model. No biological performance, clinical LoD, sensitivity, specificity or validation result is claimed without real data.
+
+Acceptance criteria:
+1. Analytical detectability is monotonic under controlled assumptions.
+2. Analytical power can be compared against simulation.
+3. Required tumor fractions are represented exactly.
+4. Missing/patient-absent candidates can be represented as zero detectability.
+5. Low-pass SNV/INDEL limitations are explicit.
+6. No clinical interpretation is inferred from the score.
