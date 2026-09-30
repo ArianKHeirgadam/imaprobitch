@@ -278,7 +278,7 @@ def _neighbor_regions(region, size, neighbor_k):
     return regions
 
 
-def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1):
+def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1, resolutions=RESOLUTIONS):
     """Hierarchical coarse-to-fine discovery followed by exact validation."""
     if neighbor_k < 0:
         raise ValueError("neighbor_k must be >= 0")
@@ -296,7 +296,7 @@ def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1):
     lineage = []
     retained = set()
 
-    for level_index, size in enumerate(RESOLUTIONS[:-1]):
+    for level_index, size in enumerate(resolutions[:-1]):
         next_active = set()
         for region, feature_type, parent_region in sorted(active):
             stats = _coarse_region_stats(rows, region, feature_type)
@@ -336,7 +336,7 @@ def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1):
                 continue
 
             retained.add((region, feature_type))
-            child_size = RESOLUTIONS[level_index + 1]
+            child_size = resolutions[level_index + 1]
             for child in _neighbor_regions(region, child_size, neighbor_k):
                 next_active.add((child, feature_type, region))
         active = next_active
@@ -363,7 +363,7 @@ def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1):
         result["significant"] = q_value <= alpha
 
     return {
-        "resolutions": [LABELS[x] for x in RESOLUTIONS],
+        "resolutions": [LABELS.get(x, f"{x}bp") for x in resolutions],
         "exact": exact,
         "lineage": lineage,
         "retained_regions": sorted(retained),
