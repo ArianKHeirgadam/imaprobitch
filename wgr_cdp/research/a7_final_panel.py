@@ -250,3 +250,31 @@ def write_final_panel(
         encoding="utf-8",
     )
     return result
+
+
+def append_a7_to_report(output_dir, result):
+    """Append the final-panel audit summary without changing prior report sections."""
+    report = Path(output_dir) / "report.html"
+    if not report.exists():
+        return False
+    import html
+    panel = result.get("panel", {})
+    selected = panel.get("selected", [])
+    coverage = panel.get("coverage", "Data unavailable")
+    section = (
+        "<hr><h2>Phase A7 Final Panel</h2>"
+        "<p>Final panel construction is a research-design result, not a clinical diagnostic claim.</p>"
+        f"<ul><li>Eligible candidates: {int(result.get('eligible_count', 0))}</li>"
+        f"<li>Panel size: {int(panel.get('k', 0))}</li>"
+        f"<li>Panel method: {html.escape(str(panel.get('method', 'not_run')))}</li>"
+        f"<li>Patient coverage: {html.escape(str(coverage))}</li>"
+        f"<li>Per-feature FPR budget: {html.escape(str(panel.get('alpha_per_feature', 'Data unavailable')))}</li></ul>"
+        "<p>Machine-readable A7 artifacts: "
+        "<code>final_panel.json</code>, <code>final_panel_candidates.csv</code>, "
+        "<code>final_panel_constraints.json</code>.</p>"
+    )
+    marker = "</body>"
+    report = report.read_text(encoding="utf-8")
+    report = report.replace(marker, section + marker, 1) if marker in report else report + section
+    Path(output_dir, "report.html").write_text(report, encoding="utf-8")
+    return True
