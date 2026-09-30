@@ -19,6 +19,8 @@ def build_parser():
     run.add_argument("--depth",type=int,default=300)
     run.add_argument("--error-rate",type=float,default=0.001)
     run.add_argument("--literature-search",action="store_true",help="query PubMed for candidate literature evidence")
+    run.add_argument("--validation-candidates",help="optional independent validation candidate CSV")
+    run.add_argument("--bootstrap",type=int,default=200)
     sub.add_parser("validate",help="check release health")
     report=sub.add_parser("report",help="locate an existing HTML report")
     report.add_argument("--output",required=True)
@@ -34,7 +36,7 @@ def execute(command):
 def main(argv=None):
     args=build_parser().parse_args(argv)
     if args.command=="run":
-        result=run_command(args.healthy,args.cancer,args.output,args.annotate,args.alpha,args.timeout,args.features,args.metadata,args.max_panel_size,args.depth,args.error_rate,args.cnv,args.literature_search)
+        result=run_command(args.healthy,args.cancer,args.output,args.annotate,args.alpha,args.timeout,args.features,args.metadata,args.max_panel_size,args.depth,args.error_rate,args.cnv,args.literature_search,args.validation_candidates,args.bootstrap)
     elif args.command=="validate": result=validate_command()
     else: result=report_command(args.output)
     print(json.dumps(result,indent=2,default=str)); return 0
