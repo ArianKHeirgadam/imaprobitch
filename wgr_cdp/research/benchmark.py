@@ -58,7 +58,7 @@ def benchmark(exact_fn, fast_fn, data):
         "exact_hits": len(exact_hits),
         "fast_hits": len(fast_hits),
         "regions_evaluated_exact": len(exact) if isinstance(exact, list) else 0,
-        "regions_evaluated_fast": len(fast.get("retained_regions", [])),
+        "regions_evaluated_fast": len(fast.get("lineage", [])),\n        "regions_retained_fast": len(fast.get("retained_regions", [])),
         "runtime_ratio_fast_over_exact": fast_runtime / exact_runtime if exact_runtime else None,
         "peak_memory_ratio_fast_over_exact": fast_peak / exact_peak if exact_peak else None,
     }
