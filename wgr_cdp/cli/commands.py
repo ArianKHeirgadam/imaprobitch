@@ -22,7 +22,7 @@ def _integrate_candidates(output, snv_candidates, cnv_candidates):
     with (path/"integrated_candidates.csv").open("w",encoding="utf-8",newline="") as h:
         w=csv.DictWriter(h,fieldnames=fields); w.writeheader(); w.writerows(rows)
 
-def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,features=None,metadata=None,max_panel_size=15,depth=300,error_rate=0.001,cnv=None):
+def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,features=None,metadata=None,max_panel_size=15,depth=300,error_rate=0.001,cnv=None,literature_search=False):
     result=analyze_cohorts(healthy,cancer,output,annotate=annotate,alpha=alpha,timeout=timeout)
     cnv_candidates=[]
     if cnv:
@@ -34,6 +34,16 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         from wgr_cdp.multimodal.engine import run_multimodal_analysis
         result["multimodal"]=run_multimodal_analysis(features,Path(output)/"multimodal",_metadata(metadata),max_panel_size,depth,error_rate)
     _integrate_candidates(output,result.get("candidates",[]),cnv_candidates)
+    from wgr_cdp.research.a5_integration import write_a5_artifacts
+    a5_candidates=list(result.get("candidates",[]))
+    a5_candidates.extend(cnv_candidates)
+    result["a5"]=write_a5_artifacts(
+        output,
+        a5_candidates,
+        weights=None,
+        constraints={"min_detectability":0.0,"max_background":1.0},
+        literature_search=literature_search,
+    )
     return result
 
 def validate_command():
