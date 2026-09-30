@@ -121,3 +121,53 @@ Acceptance criteria:
 5. Literature records are reproducible and auditable.
 6. Sensitivity analysis reports ranking changes across explicit weight scenarios.
 7. Existing A1-A4 behavior remains unchanged.
+
+## Phase A6 — Baseline, Ablation, Bootstrap Stability, and Holdout Validation
+
+A6 is implemented as an executable evaluation layer over the actual A5 candidate
+universe rather than as a disconnected test-only module.
+
+Implemented components:
+
+- a conventional statistical/effect-size feature-ranking baseline using the same candidate universe;
+- identical candidate constraints for baseline and WGR-CDP comparison;
+- explicit selection-overlap reporting, deliberately not mislabeled as predictive recall/precision;
+- runtime and peak-memory measurements for the baseline and integrated ranking operations;
+- complementary patient-coverage optimization for the full WGR-CDP selection when a real patient × candidate matrix is available;
+- canonical ablations removing detectability, blood-background, early-stage, specificity, and complementary optimization components;
+- explicit single-layer and exact-scan-only comparison records;
+- deterministic bootstrap rank/selection stability with configurable seed and iteration count;
+- optional independent validation-candidate revalidation;
+- missing validation inputs remain `Data unavailable`;
+- no clinical sensitivity, specificity, AUC, prospective performance, or independent-cohort result is inferred from synthetic tests.
+
+### A6 acceptance criteria
+
+1. Baseline and WGR-CDP use the same candidate universe.
+2. Baseline selection is deterministic under identical input.
+3. Baseline/WGR selection overlap is reported without presenting it as predictive performance.
+4. Panel coverage is calculated from an actual patient × candidate matrix when supplied.
+5. Full WGR-CDP uses complementary optimization when that matrix is available.
+6. Ablations explicitly remove named evidence components and report their selection/coverage.
+7. Bootstrap stability is reproducible from an explicit seed and iteration count.
+8. Independent validation candidates can be supplied separately from discovery candidates.
+9. Missing independent validation remains `Data unavailable`.
+10. All A1-A5 behavior remains compatible.
+
+### A6 artifacts
+
+An end-to-end CLI run now additionally writes:
+
+- `a6_validation.json`
+- `a6_baseline_comparison.json`
+- `a6_bootstrap_stability.json`
+- `a6_ablation.csv`
+
+Optional independent validation input is supplied with:
+
+`--validation-candidates <csv>`
+
+Bootstrap iterations are controlled with:
+
+`--bootstrap <N>`
+
