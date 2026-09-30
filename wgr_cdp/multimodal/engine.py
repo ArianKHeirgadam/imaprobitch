@@ -76,7 +76,7 @@ def build_patient_candidate_matrix(rows):
     return matrix
 
 def detectability_curve(tumor_fractions=None, depth=300, error_rate=0.001, min_alt_reads=3):
-    fractions=tumor_fractions or [0.5,0.25,0.1,0.05,0.02,0.01,0.005]
+    fractions=tumor_fractions or [0.5,0.2,0.1,0.05,0.02,0.01,0.005]
     out=[]
     for f in fractions:
         p=max(0.0,min(1.0,f+error_rate))
