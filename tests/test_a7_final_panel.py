@@ -88,13 +88,15 @@ def test_final_panel_optimizes_full_eligible_universe_not_ranked_top_k():
 def test_final_panel_exact_optimization_can_choose_lower_ranked_complement():
     candidates = [candidate("A", .99), candidate("B", .98), candidate("C", .70)]
     matrix = {
-        "P1": {"A": 1.0, "B": 0.0, "C": 1.0},
-        "P2": {"A": 1.0, "B": 0.0, "C": 1.0},
+        "P1": {"A": 1.0, "B": 0.0, "C": 0.0},
+        "P2": {"A": 1.0, "B": 0.0, "C": 0.0},
         "P3": {"A": 0.0, "B": 1.0, "C": 1.0},
         "P4": {"A": 0.0, "B": 1.0, "C": 1.0},
     }
     result = build_final_panel(candidates, matrix, max_k=2, weights=W)
-    assert set(result["panel"]["selected"]) == {"A", "B"}
+    # C is lower-ranked, but is the complementary feature that maximizes
+    # patient coverage when paired with the top-ranked A.
+    assert set(result["panel"]["selected"]) == {"A", "C"}
     assert result["panel"]["coverage"] >= 0.99
 
 
