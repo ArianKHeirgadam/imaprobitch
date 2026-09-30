@@ -1,5 +1,6 @@
 from wgr_cdp.research.a6_validation import (
     conventional_feature_ranking, compare_baseline, run_ablations,
+    logistic_baseline, elastic_net_coordinate_descent,
     bootstrap_rank_stability, run_a6, evaluate_selected_candidates
 )
 
@@ -69,3 +70,19 @@ def test_complete_a6_record():
     assert len(result["ablations"])==8
     assert result["bootstrap_stability"]["n_bootstrap"]==25
     assert len(result["selected"])==2
+
+
+def test_logistic_and_elastic_net_baselines_require_labels():
+    assert logistic_baseline(candidates())["status"] == "Data unavailable"
+    assert elastic_net_coordinate_descent(candidates())["status"] == "Data unavailable"
+
+
+def test_logistic_and_elastic_net_baselines_are_executable_with_labels():
+    rows = candidates()
+    labels = [1, 1, 0]
+    logistic = logistic_baseline(rows, labels=labels, k=2)
+    elastic = elastic_net_coordinate_descent(rows, labels=labels, k=2)
+    assert logistic["status"] == "Available"
+    assert elastic["status"] == "Available"
+    assert len(logistic["selected"]) == 2
+    assert len(elastic["selected"]) == 2
