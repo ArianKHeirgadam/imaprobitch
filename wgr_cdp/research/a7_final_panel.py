@@ -208,13 +208,6 @@ def write_final_panel(
     constraints = dict(constraints or {"min_detectability": 0.0, "max_background": 1.0})
 
     result = build_final_panel(
-        output_dir,
-        max_k=max_k,
-        fpr_target=fpr_target,
-        weights=weights,
-        constraints=constraints,
-        matrix=matrix,
-    ) if False else build_final_panel(
         candidates,
         matrix=matrix,
         max_k=max_k,
