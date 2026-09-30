@@ -81,17 +81,21 @@ def _patient_binary_values(rows, patients):
     return values
 
 
-def _patient_numeric_values(rows, patients):
+def _patient_numeric_values(rows, patients, feature_type):
     values = defaultdict(list)
     for row in rows:
         patient = str(row["patient"])
         if patient not in patients:
             continue
-        value = _numeric(
-            row,
-            ("value", "log2_ratio", "copy_number", "beta", "m_value",
-             "heteroplasmy", "copy_number_mt"),
-        )
+        if feature_type == "CNV":
+            keys = ("log2_ratio", "segment_mean")
+        elif feature_type == "METHYLATION":
+            keys = ("beta", "m_value", "value")
+        elif feature_type == "MITOCHONDRIAL":
+            keys = ("heteroplasmy", "copy_number_mt", "value")
+        else:
+            keys = ("value",)
+        value = _numeric(row, keys)
         if value is not None:
             values[patient].append(value)
     return {p: mean(v) for p, v in values.items() if v}
@@ -152,9 +156,9 @@ def _binary_stats(sub, cases, controls):
     }
 
 
-def _continuous_stats(sub, cases, controls):
-    case_values = _patient_numeric_values(sub, cases)
-    control_values = _patient_numeric_values(sub, controls)
+def _continuous_stats(sub, cases, controls, feature_type):
+    case_values = _patient_numeric_values(sub, cases, feature_type)
+    control_values = _patient_numeric_values(sub, controls, feature_type)
     if not case_values or not control_values:
         return {
             "case_frequency": None,
@@ -187,7 +191,7 @@ def _feature_stats(sub, cases, controls, feature_type):
     if feature_type in BINARY_FEATURES:
         return _binary_stats(sub, cases, controls)
     if feature_type in CONTINUOUS_FEATURES:
-        return _continuous_stats(sub, cases, controls)
+        return _continuous_stats(sub, cases, controls, feature_type)
     return _binary_stats(sub, cases, controls)
 
 
@@ -299,15 +303,26 @@ def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1):
             if stats is None:
                 continue
 
-            retained_here = float(stats["effect_size"]) >= effect_threshold
+            if feature_type in BINARY_FEATURES:
+                density_effect = float(stats.get("variant_density_difference") or 0.0)
+                screening_effect = max(
+                    float(stats["effect_size"]),
+                    density_effect / (1.0 + density_effect),
+                )
+            else:
+                screening_effect = float(stats["effect_size"])
+
+            retained_here = screening_effect >= effect_threshold
             lineage.append({
                 "resolution": LABELS[size],
                 "resolution_bp": size,
                 "region": region,
                 "feature_type": feature_type,
-                "effect_size": float(stats["effect_size"]),\n                "screening_effect": screening_effect,
+                "effect_size": float(stats["effect_size"]),
+                "screening_effect": screening_effect,
                 "p_value": float(stats["p_value"]),
-                "retained": retained_here,\n                "parent_region": parent_region,
+                "retained": retained_here,
+                "parent_region": parent_region,
                 "case_frequency": stats.get("case_frequency"),
                 "control_frequency": stats.get("control_frequency"),
                 "case_mean": stats.get("case_mean"),
