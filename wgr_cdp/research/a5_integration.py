@@ -108,3 +108,32 @@ def write_a5_artifacts(output_dir, candidates, weights=None, constraints=None,
         "ineligible_count":len(ranking["ineligible"]),
         "unscored_count":len(ranking["unscored"]),
     }
+
+def append_a5_to_report(output_dir, a5_result):
+    """Add an auditable A5 summary to the existing real-analysis HTML report."""
+    report = Path(output_dir) / "report.html"
+    if not report.exists():
+        return False
+    import html
+    document = report.read_text(encoding="utf-8")
+    section = (
+        "<hr><h2>Phase A5 Candidate Evidence</h2>"
+        "<p>Evidence integration is research prioritization only; missing measurements remain unavailable.</p>"
+        "<ul>"
+        f"<li>Eligible ranked candidates: {int(a5_result.get('ranked_count', 0))}</li>"
+        f"<li>Hard-constraint ineligible candidates: {int(a5_result.get('ineligible_count', 0))}</li>"
+        f"<li>Unscored candidates: {int(a5_result.get('unscored_count', 0))}</li>"
+        "</ul>"
+        "<p>Machine-readable A5 artifacts: "
+        "<code>candidate_evidence.csv</code>, "
+        "<code>candidate_constraints.json</code>, "
+        "<code>literature_whitespace.json</code>, "
+        "<code>ranking_sensitivity.json</code>.</p>"
+    )
+    marker = "</body>"
+    if marker in document:
+        document = document.replace(marker, section + marker, 1)
+    else:
+        document += section
+    report.write_text(document, encoding="utf-8")
+    return True
