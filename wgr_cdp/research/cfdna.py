@@ -34,15 +34,28 @@ def estimate_lod(depth=300,target_power=.95,lower=1e-5,upper=.5,**kwargs):
         else: lo=mid
     return hi
 
-def patient_candidate_matrix(patients,candidates,candidate_features,assay=None):
-    out={}
+def patient_candidate_matrix(patients, candidates, candidate_features, assay=None):
+    """Build D[p,c] using patient-specific candidate evidence when supplied."""
+    out = {}
     for patient in patients:
-        out[patient]={}
+        out[patient] = {}
+        patient_features = candidate_features.get(patient) if isinstance(candidate_features.get(patient), dict) else {}
         for candidate in candidates:
-            s=dict(candidate_features.get(candidate) or {})
-            out[patient][candidate]=detectability_probability(
-                s.get("tumor_fraction",.01),depth=s.get("depth",300),
-                informative_sites=s.get("informative_sites",1),copy_number=s.get("copy_number",2),
-                dilution=s.get("dilution",1),error_rate=s.get("error_rate",.001),
-                min_alt_reads=s.get("min_alt_reads",3),blood_background=s.get("blood_background",0))
+            raw = patient_features.get(candidate) if isinstance(patient_features, dict) else None
+            if raw is None:
+                raw = candidate_features.get(candidate)
+            s = dict(raw or {})
+            if s.get("present") is False:
+                out[patient][candidate] = 0.0
+                continue
+            out[patient][candidate] = detectability_probability(
+                s.get("tumor_fraction", .01),
+                depth=s.get("depth", 300),
+                informative_sites=s.get("informative_sites", 1),
+                copy_number=s.get("copy_number", 2),
+                dilution=s.get("dilution", 1),
+                error_rate=s.get("error_rate", .001),
+                min_alt_reads=s.get("min_alt_reads", 3),
+                blood_background=s.get("blood_background", 0),
+            )
     return out
