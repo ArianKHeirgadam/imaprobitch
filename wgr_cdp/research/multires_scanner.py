@@ -343,14 +343,17 @@ def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1):
         if not active:
             break
 
-    final_active = active
+    # Exact validation is applied to every native feature whose region
+    # overlaps any retained coarse lineage. The final active child bins are
+    # an implementation detail of traversal and must not exclude a native
+    # feature merely because a 1-bp neighbor bin does not contain its start.
     final = [
         {**result, "exact_checked": True}
         for result in exact
         if any(
             feature_type == result["feature_type"]
             and _overlaps(result["region"], region)
-            for region, feature_type, _parent in final_active
+            for region, feature_type in retained
         )
     ]
 
@@ -365,7 +368,6 @@ def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1):
         "lineage": lineage,
         "retained_regions": sorted(retained),
         "exact_checked": len(final),
-        "final_active_regions": sorted((region, feature_type) for region, feature_type, _parent in final_active),
         "final": final,
         "neighbor_k": neighbor_k,
         "effect_threshold": effect_threshold,
