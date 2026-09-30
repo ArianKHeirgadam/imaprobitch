@@ -204,3 +204,101 @@ def run_a6(candidates, weights, constraints=None, matrix=None, k=15,
         "holdout_validation":holdout,
         "selected":[_id(x) for x in ranking["ranked"][:k]],
     }
+
+
+def _design_matrix(candidates, features=None):
+    """Build a deterministic numeric matrix from candidate feature dictionaries."""
+    features = list(features or sorted({
+        key for row in candidates for key, value in row.items()
+        if key not in {"candidate_id", "candidate", "feature", "gene"}
+        and isinstance(value, (int, float))
+    }))
+    X = []
+    for row in candidates:
+        X.append([float(row.get(feature, 0.0) or 0.0) for feature in features])
+    return X, features
+
+
+def logistic_baseline(candidates, labels=None, k=15, l2=1e-2, steps=500, learning_rate=0.05):
+    """Dependency-light logistic baseline; returns Data unavailable without labels."""
+    if labels is None:
+        return {"status": "Data unavailable", "selected": [], "features": []}
+    if len(labels) != len(candidates) or not candidates:
+        return {"status": "Data unavailable", "selected": [], "features": []}
+    X, features = _design_matrix(candidates)
+    if not X or not features:
+        return {"status": "Data unavailable", "selected": [], "features": features}
+    y = [float(v) for v in labels]
+    weights = [0.0] * len(features)
+    bias = 0.0
+    import math
+    for _ in range(int(steps)):
+        grad_w = [0.0] * len(features)
+        grad_b = 0.0
+        for row, target in zip(X, y):
+            z = bias + sum(w * x for w, x in zip(weights, row))
+            z = max(-30.0, min(30.0, z))
+            p = 1.0 / (1.0 + math.exp(-z))
+            error = p - target
+            grad_b += error
+            for j, x in enumerate(row):
+                grad_w[j] += error * x
+        n = float(len(X))
+        bias -= learning_rate * grad_b / n
+        for j in range(len(weights)):
+            weights[j] -= learning_rate * (grad_w[j] / n + l2 * weights[j])
+    ranked = sorted(
+        enumerate(weights),
+        key=lambda item: (-abs(item[1]), item[0]),
+    )
+    return {
+        "status": "Available",
+        "features": features,
+        "coefficients": {features[i]: weights[i] for i, _ in ranked},
+        "selected": features[:0] + [features[i] for i, _ in ranked[:max(0, int(k))]],
+        "bias": bias,
+    }
+
+
+def elastic_net_coordinate_descent(candidates, labels=None, alpha=0.01, l1_ratio=0.5,
+                                   k=15, steps=500, learning_rate=0.02):
+    """Dependency-light elastic-net coefficient baseline."""
+    if labels is None:
+        return {"status": "Data unavailable", "selected": [], "features": []}
+    if len(labels) != len(candidates) or not candidates:
+        return {"status": "Data unavailable", "selected": [], "features": []}
+    X, features = _design_matrix(candidates)
+    if not X or not features:
+        return {"status": "Data unavailable", "selected": [], "features": features}
+    y = [float(v) for v in labels]
+    weights = [0.0] * len(features)
+    import math
+    l1 = float(alpha) * float(l1_ratio)
+    l2 = float(alpha) * (1.0 - float(l1_ratio))
+    for _ in range(int(steps)):
+        for j in range(len(features)):
+            grad = 0.0
+            for row, target in zip(X, y):
+                z = sum(w * x for w, x in zip(weights, row))
+                z = max(-30.0, min(30.0, z))
+                p = 1.0 / (1.0 + math.exp(-z))
+                grad += (p - target) * row[j]
+            grad /= float(len(X))
+            old = weights[j]
+            proposal = old - learning_rate * (grad + l2 * old)
+            threshold = learning_rate * l1
+            if proposal > threshold:
+                weights[j] = proposal - threshold
+            elif proposal < -threshold:
+                weights[j] = proposal + threshold
+            else:
+                weights[j] = 0.0
+    ranked = sorted(enumerate(weights), key=lambda item: (-abs(item[1]), item[0]))
+    return {
+        "status": "Available",
+        "features": features,
+        "coefficients": {features[i]: weights[i] for i, _ in ranked},
+        "selected": [features[i] for i, _ in ranked[:max(0, int(k))]],
+        "alpha": float(alpha),
+        "l1_ratio": float(l1_ratio),
+    }
