@@ -5,7 +5,7 @@ Phase 25 is retained as the historical release milestone for the original 0–25
 ## Current release identity
 
 - Name: WGR-CDP
-- Release: 1.1.0
+- Release: 1.2.0
 - Status: research
 - Clinical diagnostic: false
 
