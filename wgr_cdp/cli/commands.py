@@ -117,7 +117,6 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
 
     # A9 is the final provenance layer: hash the completed run artifacts after
     # A8 has finished. The manifest excludes itself to remain self-consistent.
-    from wgr_cdp.research.a8_validation import _sample_id
     from wgr_cdp.release.reproducibility import write_reproducibility_manifest
     run_id = result.get("run", {}).get("run_id") or result.get("a8", {}).get("run_id")
     result["a9"] = {
