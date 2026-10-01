@@ -18,5 +18,6 @@ RELEASE_METADATA = {
         "pipeline validation and run tracking",
         "A8 empirical validation and leakage gate",
         "A9 reproducibility manifest and release gate",
+        "A10 GDC/TCGA dataset intake and provenance",
     ],
 }
