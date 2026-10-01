@@ -13,13 +13,14 @@ REQUIRED_COMPONENTS = {
     "Benjamini-Hochberg FDR correction",
     "candidate evidence prioritization",
     "pipeline validation and run tracking",
+    "A8 empirical validation and leakage gate",
+    "A9 reproducibility manifest and release gate",
 }
 
 
 def run_health_check():
     """Return deterministic release readiness checks."""
     components = set(RELEASE_METADATA.get("components", []))
-
     checks = {
         "metadata_complete": bool(
             RELEASE_METADATA.get("name")
@@ -32,7 +33,6 @@ def run_health_check():
             and RELEASE_METADATA.get("clinical_diagnostic") is False
         ),
     }
-
     return {
         "release": RELEASE_METADATA["release"],
         "passed": all(checks.values()),
