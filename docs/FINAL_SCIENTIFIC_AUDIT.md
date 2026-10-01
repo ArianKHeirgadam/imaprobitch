@@ -1,4 +1,4 @@
-# WGR-CDP Final Scientific & Reproducibility Audit — A0 to A10
+# WGR-CDP Final Scientific & Reproducibility Audit — A0 to A11
 
 ## Scope
 
@@ -102,6 +102,13 @@ Status: implementation complete; actual TCGA-STAD analysis remains dependent
 on explicit acquisition of appropriate local files, harmonization, modality
 validation and independent data.
 
+## A11: acquisition and registration
+
+A11 adds paginated GDC file inventory, deterministic acquisition manifests,
+explicit download, checksum/size verification, controlled-access token guards,
+and local dataset registration. It still does not make a file analysis-ready
+without genome-build and sample-level validation.
+
 ## Explicit non-claims
 
 The framework must not claim clinical diagnosis, clinical sensitivity/specificity/AUC, prospective utility, assay-validated LoD, independent validation results when no independent cohort is supplied, global literature novelty, or biological efficacy from synthetic software tests.
@@ -110,6 +117,6 @@ The framework must not claim clinical diagnosis, clinical sensitivity/specificit
 
 A passing software test suite establishes implementation behavior, not biological validity. Real datasets, verified metadata, external evidence retrieval and independent validation remain necessary before making empirical scientific claims.
 
-Overall A0–A10 software status: GO for implementation.
+Overall A0–A11 software status: GO for implementation.
 
 Scientific-result status: conditional on real data and independent validation.
