@@ -1,4 +1,4 @@
-# WGR-CDP Final Scientific & Reproducibility Audit — A0 to A11
+# WGR-CDP Final Scientific & Reproducibility Audit — A0 to A12
 
 ## Scope
 
@@ -109,6 +109,13 @@ explicit download, checksum/size verification, controlled-access token guards,
 and local dataset registration. It still does not make a file analysis-ready
 without genome-build and sample-level validation.
 
+## A12: real GDC cohort construction
+
+A12 builds a case/sample/file cohort manifest from GDC metadata using explicit
+sample fields and paginated case/file queries. It does not turn project-level
+case counts into analyzable samples, infer tumor/normal status from filenames,
+or mark local files analysis-ready before genome-build and sample-level QC.
+
 ## Explicit non-claims
 
 The framework must not claim clinical diagnosis, clinical sensitivity/specificity/AUC, prospective utility, assay-validated LoD, independent validation results when no independent cohort is supplied, global literature novelty, or biological efficacy from synthetic software tests.
@@ -117,6 +124,6 @@ The framework must not claim clinical diagnosis, clinical sensitivity/specificit
 
 A passing software test suite establishes implementation behavior, not biological validity. Real datasets, verified metadata, external evidence retrieval and independent validation remain necessary before making empirical scientific claims.
 
-Overall A0–A11 software status: GO for implementation.
+Overall A0–A12 software status: GO for implementation.
 
 Scientific-result status: conditional on real data and independent validation.
