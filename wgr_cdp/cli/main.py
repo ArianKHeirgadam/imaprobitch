@@ -47,6 +47,11 @@ def build_parser():
     reg.add_argument("--manifest",required=True)
     reg.add_argument("--root",required=True)
     reg.add_argument("--output",required=True)
+    cohort=sub.add_parser("cohort",help="build a real GDC case/sample/variant-file cohort manifest")
+    cohort.add_argument("--project",default="TCGA-STAD")
+    cohort.add_argument("--output",required=True)
+    cohort.add_argument("--access",choices=["open","controlled"])
+    cohort.add_argument("--timeout",type=int,default=30)
     report=sub.add_parser("report",help="locate an existing HTML report")
     report.add_argument("--output",required=True)
     return parser
