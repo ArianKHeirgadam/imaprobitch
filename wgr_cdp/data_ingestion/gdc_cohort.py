@@ -93,7 +93,7 @@ def query_variant_files(project_id: str, *, access: str | None = None,
                 out.append(row)
         pagination = data.get("pagination") or {}
         total = pagination.get("total")
-        if not hits or (isinstance(total, int) and offset + len(hits) >= total):
+        if not hits or total is None or (isinstance(total, int) and offset + len(hits) >= total):
             return out
         offset += len(hits)
 
