@@ -2,6 +2,7 @@
 import csv
 import json
 from pathlib import Path
+from wgr_cdp.tracking.run import create_run_record
 from wgr_cdp.application.analysis import analyze_cohorts
 from wgr_cdp.release.health import run_health_check
 from wgr_cdp.cnv_analysis.analysis import analyze_cnv_segments
@@ -24,7 +25,18 @@ def _integrate_candidates(output, snv_candidates, cnv_candidates):
         w=csv.DictWriter(h,fieldnames=fields); w.writeheader(); w.writerows(rows)
 
 def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,features=None,metadata=None,max_panel_size=15,depth=300,error_rate=0.001,cnv=None,literature_search=False,validation_candidates=None,bootstrap=200):
+    run_config = {
+        "healthy": str(healthy), "cancer": str(cancer), "alpha": alpha,
+        "timeout": timeout, "features": str(features) if features else None,
+        "cnv": str(cnv) if cnv else None, "max_panel_size": max_panel_size,
+        "depth": depth, "error_rate": error_rate,
+        "literature_search": literature_search,
+        "validation_candidates": str(validation_candidates) if validation_candidates else None,
+        "bootstrap": bootstrap,
+    }
+    run_record = create_run_record(run_config)
     result=analyze_cohorts(healthy,cancer,output,annotate=annotate,alpha=alpha,timeout=timeout)
+    result["run"] = run_record
     cnv_candidates=[]
     if cnv:
         cnv_rows=read_cnv_segments(cnv)
@@ -118,25 +130,12 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     # A9 is the final provenance layer: hash the completed run artifacts after
     # A8 has finished. The manifest excludes itself to remain self-consistent.
     from wgr_cdp.release.reproducibility import write_reproducibility_manifest
-    run_id = result.get("run", {}).get("run_id") or result.get("a8", {}).get("run_id")
+    run_id = run_record["run_id"]
     result["a9"] = {
         "reproducibility_manifest": str(
             write_reproducibility_manifest(
                 output,
-                config={
-                    "healthy": str(healthy),
-                    "cancer": str(cancer),
-                    "alpha": alpha,
-                    "timeout": timeout,
-                    "features": str(features) if features else None,
-                    "cnv": str(cnv) if cnv else None,
-                    "max_panel_size": max_panel_size,
-                    "depth": depth,
-                    "error_rate": error_rate,
-                    "literature_search": literature_search,
-                    "validation_candidates": str(validation_candidates) if validation_candidates else None,
-                    "bootstrap": bootstrap,
-                },
+                config=run_config,
                 run_id=run_id,
             )
         )
