@@ -160,3 +160,37 @@ def report_command(output):
     path=Path(output)/"report.html"
     if not path.exists(): raise FileNotFoundError(f"report not found: {path}")
     print(path.resolve()); return {"report":str(path.resolve())}
+
+
+def inventory_command(project="TCGA-STAD", output="results/tcga_stad_inventory", access=None,
+                       category=None, strategy=None, data_format=None, modalities=None, max_files=None):
+    from wgr_cdp.data_ingestion.gdc_acquisition import (
+        inventory_files, build_acquisition_manifest,
+        write_acquisition_manifest, write_tsv_manifest,
+    )
+    rows = inventory_files(
+        project, data_category=category, access=access,
+        experimental_strategy=strategy, data_format=data_format, max_files=max_files,
+    )
+    selected = set(modalities) if modalities else None
+    manifest = build_acquisition_manifest(project, rows, selected)
+    json_path = write_acquisition_manifest(str(output) + ".json", manifest)
+    tsv_path = write_tsv_manifest(str(output) + ".tsv", manifest)
+    manifest["output_json"] = str(json_path)
+    manifest["output_tsv"] = str(tsv_path)
+    return manifest
+
+def acquire_command(manifest_path, output_dir, token=None, limit=None):
+    from wgr_cdp.data_ingestion.gdc_acquisition import acquire_manifest, write_acquisition_manifest
+    path = Path(manifest_path)
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    result = acquire_manifest(manifest, output_dir, token=token, limit=limit)
+    write_acquisition_manifest(path, result)
+    return result
+
+def register_command(manifest_path, root, output):
+    from wgr_cdp.data_ingestion.gdc_acquisition import register_dataset, write_registration
+    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    result = register_dataset(manifest, root)
+    result["output"] = str(write_registration(output, result))
+    return result
