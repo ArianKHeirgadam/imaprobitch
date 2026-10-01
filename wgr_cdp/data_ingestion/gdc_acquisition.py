@@ -216,10 +216,16 @@ def acquire_manifest(manifest: dict, output_dir: str | Path, *,
         results.append(result)
     manifest["downloaded_count"] = sum(r.get("status") in {"PASS", "EXISTS"} for r in results)
     manifest["verified_count"] = sum(bool(r.get("verified")) for r in results)
-    manifest["acquisition_status"] = (
-        "PASS" if results and manifest["verified_count"] == len(results)
-        else ("Data unavailable" if not results else "CONDITIONAL")
-    )
+    if not results:
+        manifest["acquisition_status"] = "Data unavailable"
+    elif manifest["verified_count"] == len(results):
+        manifest["acquisition_status"] = "PASS"
+    elif manifest["verified_count"] == 0 and all(
+        r.get("status") == "Data unavailable" for r in results
+    ):
+        manifest["acquisition_status"] = "Data unavailable"
+    else:
+        manifest["acquisition_status"] = "CONDITIONAL"
     return manifest
 
 
