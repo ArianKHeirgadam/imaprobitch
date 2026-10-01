@@ -80,3 +80,24 @@ def test_write_manifests(tmp_path):
     tp = a.write_tsv_manifest(tmp_path/"a.tsv", m)
     assert json.loads(jp.read_text())["project_id"] == "TCGA-STAD"
     assert "file_id" in tp.read_text()
+
+
+def test_inventory_paginates(monkeypatch):
+    calls = []
+    def fake(url, timeout=30):
+        calls.append(url)
+        if len(calls) == 1:
+            return {"data": {"hits": [{"file_id": "b"}], "pagination": {"total": 2}}}
+        return {"data": {"hits": [{"file_id": "a"}], "pagination": {"total": 2}}}
+    monkeypatch.setattr(a, "_get_json", fake)
+    rows = a.inventory_files("TCGA-STAD", page_size=1)
+    assert [r["file_id"] for r in rows] == ["b", "a"]
+    assert len(calls) == 2
+
+
+def test_acquire_manifest_keeps_unavailable_without_fake_success(tmp_path):
+    m = a.build_acquisition_manifest("TCGA-STAD", [{"file_id": "x", "access": "controlled"}])
+    result = a.acquire_manifest(m, tmp_path)
+    assert result["verified_count"] == 0
+    assert result["acquisition_status"] == "Data unavailable"
+    assert result["files"][0]["verified"] is False
