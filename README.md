@@ -89,22 +89,11 @@ Top genomic candidates
 Evidence supporting each candidate
 Ranking information
 Analysis statistics
-Example Research Output
-Top Candidate:
+Reproducibility and validation outputs
 
-Gene:
-TP53
+The current implementation also produces A5 evidence artifacts, A6 baseline/ablation/stability outputs, A7 panel-optimization artifacts, A8 validation/leakage artifacts, and an A9 `reproducibility_manifest.json` with SHA-256 artifact checksums.
 
-Alteration:
-SNV
-
-Evidence:
-- Cancer enrichment
-- Functional impact
-- External annotation support
-
-Candidate Score:
-94/100
+No biological candidate, score, prevalence, performance metric, or validation result is claimed here without actual input data.
 Purpose
 
 WGR-CDP is designed for:
@@ -208,6 +197,12 @@ SNV
 کشف Biomarker
 تحلیل Cohortهای ژنتیکی
 پیدا کردن ژن‌های احتمالا مرتبط با بیماری
+Scientific boundary
+
+WGR-CDP is a research candidate-discovery and panel-design framework, not a clinical diagnostic system. Candidate scores and detectability values are research-model outputs, not clinical probabilities. Missing biological inputs are represented as `Data unavailable` rather than treated as negative evidence.
+
+Current release: 1.1.0
+
 Project Vision
 
 WGR-CDP aims to bridge the gap between raw genome sequencing data and biological discovery by providing an integrated framework for genomic candidate identification.
