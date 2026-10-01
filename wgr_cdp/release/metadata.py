@@ -2,7 +2,7 @@
 
 RELEASE_METADATA = {
     "name": "WGR-CDP",
-    "release": "1.2.0",
+    "release": "1.3.0",
     "status": "research",
     "scope": "genomic cohort analysis, cfDNA-aware candidate discovery and panel design",
     "clinical_diagnostic": False,
@@ -19,5 +19,6 @@ RELEASE_METADATA = {
         "A8 empirical validation and leakage gate",
         "A9 reproducibility manifest and release gate",
         "A10 GDC/TCGA dataset intake and provenance",
+        "A11 GDC acquisition, checksum verification and dataset registration",
     ],
 }
