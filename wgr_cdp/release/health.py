@@ -17,6 +17,7 @@ REQUIRED_COMPONENTS = {
     "A9 reproducibility manifest and release gate",
     "A10 GDC/TCGA dataset intake and provenance",
     "A11 GDC acquisition, checksum verification and dataset registration",
+    "A12 real GDC case-sample-file cohort construction",
 }
 
 
