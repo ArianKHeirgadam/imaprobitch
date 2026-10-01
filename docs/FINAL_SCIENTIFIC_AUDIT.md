@@ -1,4 +1,4 @@
-# WGR-CDP Final Scientific & Reproducibility Audit — A0 to A9
+# WGR-CDP Final Scientific & Reproducibility Audit — A0 to A10
 
 ## Scope
 
@@ -90,6 +90,18 @@ The `validate` command checks release health; the `release` command exposes the 
 
 Status: implementation complete; reproducibility of empirical findings remains dependent on preserving the same source datasets, metadata, software environment and external resources.
 
+## A10: real dataset intake and provenance
+
+A10 adds a GDC/TCGA intake layer that retrieves released project metadata and
+optionally inventories files through the GDC search API. It preserves source
+provenance and explicit missing-data semantics and does not silently download
+controlled-access data or claim that a discovered project has been biologically
+analyzed.
+
+Status: implementation complete; actual TCGA-STAD analysis remains dependent
+on explicit acquisition of appropriate local files, harmonization, modality
+validation and independent data.
+
 ## Explicit non-claims
 
 The framework must not claim clinical diagnosis, clinical sensitivity/specificity/AUC, prospective utility, assay-validated LoD, independent validation results when no independent cohort is supplied, global literature novelty, or biological efficacy from synthetic software tests.
@@ -98,6 +110,6 @@ The framework must not claim clinical diagnosis, clinical sensitivity/specificit
 
 A passing software test suite establishes implementation behavior, not biological validity. Real datasets, verified metadata, external evidence retrieval and independent validation remain necessary before making empirical scientific claims.
 
-Overall A0–A9 software status: GO for implementation.
+Overall A0–A10 software status: GO for implementation.
 
 Scientific-result status: conditional on real data and independent validation.
