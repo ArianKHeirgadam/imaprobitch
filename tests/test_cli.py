@@ -10,6 +10,9 @@ def test_cli_commands():
     assert execute("release")["scientific_results"] == "CONDITIONAL"
     assert execute("report")["command"] == "report"
     assert execute("intake")["command"] == "intake"
+    assert execute("inventory")["command"] == "inventory"
+    assert execute("acquire")["command"] == "acquire"
+    assert execute("register")["command"] == "register"
 
 
 def test_unknown_cli_command():
