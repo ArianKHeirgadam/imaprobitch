@@ -1,4 +1,4 @@
-# WGR-CDP Final Scientific Audit — A0 to A7
+# WGR-CDP Final Scientific Audit — A0 to A8
 
 ## Scope
 
@@ -13,31 +13,31 @@ This audit compares the implemented research framework against the supplied WGR-
 - Benchmarking reports recall/precision, runtime, peak memory, evaluated regions, feature-type breakdown and parameter sweeps.
 - Measured poor recall is not silently converted into success.
 
-**Status: implemented; biological performance remains data-dependent.**
+Status: implemented; biological performance remains data-dependent.
 
 ## A3: blood background
 
 WBC, healthy-plasma, PoN, gnomAD and CHIP/background fields are represented independently. Missing sources remain Data unavailable and are not treated as negative evidence.
 
-**Status: implemented; real background data are required for biological conclusions.**
+Status: implemented; real background data are required for biological conclusions.
 
 ## A4: cfDNA detectability
 
 The required tumor-fraction grid (0.5 through 0.005), sequencing depth, region size, informative sites, copy number, assay error and blood-background penalty are represented. Analytical detectability is compared with Monte-Carlo simulation. Low-pass SNV/INDEL limitations are explicitly marked.
 
-**Status: implemented as a computational research model; assay-specific wet-lab validation is not present.**
+Status: implemented as a computational research model; assay-specific wet-lab validation is not present.
 
 ## A5: evidence and literature
 
 Evidence components remain separate. Hard constraints precede weighted ranking. Missing evidence is preserved. Weight sensitivity is available. Literature records are query/date/source/count based, with separate novelty, validation-gap and diagnostic-utility fields. PubMed and Europe PMC are supported as separate sources.
 
-**Status: implemented; manual literature review and real candidate searches are data-dependent.**
+Status: implemented; manual literature review and real candidate searches are data-dependent.
 
 ## A6: baseline, ablation, stability and leakage
 
 A conventional same-universe ranking baseline exists. Logistic and elastic-net baseline helpers are available when labelled data are supplied. Ablations, bootstrap stability, holdout guards and discovery/frozen/validation state controls are implemented.
 
-**Status: software-complete; predictive performance remains Data unavailable without labelled independent data.**
+Status: software-complete; predictive performance remains Data unavailable without labelled independent data.
 
 ## A7: final panel
 
@@ -49,7 +49,38 @@ Artifacts include:
 - final_panel_constraints.json
 - final_panel_diagnostics.json
 
-**Status: implementation complete; actual panel quality is data-dependent.**
+Status: implementation complete; actual panel quality is data-dependent.
+
+## A8: final empirical validation and reproducibility gate
+
+A8 is an additive final gate after A7. It provides:
+
+- sample/patient overlap auditing between discovery and independent validation;
+- explicit DISCOVERY -> FROZEN -> VALIDATION state transition auditing;
+- revalidation of the A7-selected candidate set;
+- effect-direction concordance when effect measurements exist in both cohorts;
+- bootstrap stability of validation revalidation;
+- machine-readable quality-gate output;
+- HTML report integration.
+
+A8 distinguishes candidate overlap from cohort leakage. A candidate can legitimately be present in both discovery and independent validation; shared sample/patient identifiers are the leakage criterion.
+
+The gate uses:
+- PASS when independent validation inputs are present and the supplied checks pass;
+- CONDITIONAL when required empirical inputs are unavailable;
+- FAIL when sample/patient leakage or a reproducibility-state failure is detected.
+
+When the CLI receives a validation-candidate file, A8 is executed automatically after A7. If that file lacks sample/patient IDs, the leakage criterion remains Data unavailable rather than assuming independence.
+
+Artifacts include:
+- a8_validation.json
+- a8_leakage_audit.json
+- a8_bootstrap_stability.json
+- a8_generalization.json
+- a8_generalization.csv
+- a8_quality_gate.json
+
+Status: implementation complete; empirical scientific conclusions remain conditional on real independent cohorts and verified metadata.
 
 ## Explicit non-claims
 
@@ -59,4 +90,6 @@ The framework must not claim clinical diagnosis, clinical sensitivity/specificit
 
 A passing software test suite establishes implementation behavior, not biological validity. Real datasets, verified metadata, external evidence retrieval and independent validation remain necessary before making empirical scientific claims.
 
-**Overall A0–A7 software status: GO for implementation. Scientific-result status: conditional on real data and external validation.**
+Overall A0–A8 software status: GO for implementation.
+
+Scientific-result status: conditional on real data and independent validation.
