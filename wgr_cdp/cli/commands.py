@@ -99,10 +99,23 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     )
     from wgr_cdp.research.a7_final_panel import append_a7_to_report
     append_a7_to_report(output, result["a7"])
+
+    # A8 is intentionally additive: it consumes A7's selected panel and the
+    # optional independent validation table without changing A0-A7 behavior.
+    from wgr_cdp.research.a8_validation import run_a8, write_a8_artifacts, append_a8_to_report
+    selected_a7 = result["a7"].get("panel", {}).get("selected", [])
+    result["a8"] = run_a8(
+        selected_a7,
+        discovery_rows=a5_candidates,
+        validation_rows=validation_rows,
+        n_bootstrap=bootstrap,
+    )
+    write_a8_artifacts(output, result["a8"])
+    append_a8_to_report(output, result["a8"])
+
     with (Path(output) / "a6_ablation.csv").open("w", encoding="utf-8", newline="") as h:
         fields=["ablation","k","coverage","ineligible","unscored"]
-        w=csv.DictWriter(h,fieldnames=fields); w.writeheader()
-        w.writerows(result["a6"]["ablations"])
+        w=csv.DictWriter(h,fieldnames=fields); w.writeheader(); w.writerows(result["a6"]["ablations"])
     return result
 
 def validate_command():
