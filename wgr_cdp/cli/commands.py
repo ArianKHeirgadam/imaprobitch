@@ -100,8 +100,6 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     from wgr_cdp.research.a7_final_panel import append_a7_to_report
     append_a7_to_report(output, result["a7"])
 
-    # A8 is intentionally additive: it consumes A7's selected panel and the
-    # optional independent validation table without changing A0-A7 behavior.
     from wgr_cdp.research.a8_validation import run_a8, write_a8_artifacts, append_a8_to_report
     selected_a7 = result["a7"].get("panel", {}).get("selected", [])
     result["a8"] = run_a8(
@@ -116,6 +114,34 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     with (Path(output) / "a6_ablation.csv").open("w", encoding="utf-8", newline="") as h:
         fields=["ablation","k","coverage","ineligible","unscored"]
         w=csv.DictWriter(h,fieldnames=fields); w.writeheader(); w.writerows(result["a6"]["ablations"])
+
+    # A9 is the final provenance layer: hash the completed run artifacts after
+    # A8 has finished. The manifest excludes itself to remain self-consistent.
+    from wgr_cdp.research.a8_validation import _sample_id
+    from wgr_cdp.release.reproducibility import write_reproducibility_manifest
+    run_id = result.get("run", {}).get("run_id") or result.get("a8", {}).get("run_id")
+    result["a9"] = {
+        "reproducibility_manifest": str(
+            write_reproducibility_manifest(
+                output,
+                config={
+                    "healthy": str(healthy),
+                    "cancer": str(cancer),
+                    "alpha": alpha,
+                    "timeout": timeout,
+                    "features": str(features) if features else None,
+                    "cnv": str(cnv) if cnv else None,
+                    "max_panel_size": max_panel_size,
+                    "depth": depth,
+                    "error_rate": error_rate,
+                    "literature_search": literature_search,
+                    "validation_candidates": str(validation_candidates) if validation_candidates else None,
+                    "bootstrap": bootstrap,
+                },
+                run_id=run_id,
+            )
+        )
+    }
     return result
 
 def validate_command():
