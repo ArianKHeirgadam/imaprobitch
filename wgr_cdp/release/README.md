@@ -1,4 +1,4 @@
-# Release 1.3.0
+# Release 1.4.0
 
 This release marks the current WGR-CDP implementation as a **research
 bioinformatics framework**.
@@ -19,6 +19,7 @@ bioinformatics framework**.
 - A9 reproducibility manifest and release-readiness gate
 - A10 GDC/TCGA dataset intake and provenance
 - A11 GDC acquisition, checksum verification and dataset registration
+- A12 real GDC case-sample-file cohort construction
 
 ## Validation
 
