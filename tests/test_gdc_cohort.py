@@ -54,3 +54,29 @@ def test_write_manifest(tmp_path):
     m = c.build_cohort_manifest("TCGA-STAD", [])
     p = c.write_cohort_manifest(tmp_path / "cohort.json", m)
     assert json.loads(p.read_text())["schema_version"] == "A12-1"
+
+
+def test_query_cases_paginates(monkeypatch):
+    calls = []
+    def fake(endpoint, payload, timeout=30):
+        calls.append(payload["from"])
+        if len(calls) == 1:
+            return {"data": {"hits": [{"case_id": "c1"}], "pagination": {"total": 2}}}
+        return {"data": {"hits": [{"case_id": "c2"}], "pagination": {"total": 2}}}
+    monkeypatch.setattr(c, "_post_json", fake)
+    rows = c.query_cases("TCGA-STAD", size=1)
+    assert [x["case_id"] for x in rows] == ["c1", "c2"]
+    assert calls == [0, 1]
+
+
+def test_query_variant_files_paginates(monkeypatch):
+    calls = []
+    def fake(endpoint, payload, timeout=30):
+        calls.append(payload["from"])
+        if len(calls) == 1:
+            return {"data": {"hits": [{"file_id": "v1", "data_category": "Simple Nucleotide Variation"}], "pagination": {"total": 2}}}
+        return {"data": {"hits": [{"file_id": "v2", "data_category": "Simple Nucleotide Variation"}], "pagination": {"total": 2}}}
+    monkeypatch.setattr(c, "_post_json", fake)
+    rows = c.query_variant_files("TCGA-STAD", size=1)
+    assert [x["file_id"] for x in rows] == ["v1", "v2"]
+    assert calls == [0, 1]
