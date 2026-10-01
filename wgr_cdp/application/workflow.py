@@ -34,4 +34,19 @@ def run_research_workflow(healthy_path, cancer_path, output_dir, cnv_path=None):
             output / "cnv"
         )
 
+    from wgr_cdp.release.reproducibility import write_reproducibility_manifest
+    result["a9"] = {
+        "reproducibility_manifest": str(
+            write_reproducibility_manifest(
+                output,
+                config={
+                    "healthy": str(healthy_path),
+                    "cancer": str(cancer_path),
+                    "cnv": str(cnv_path) if cnv_path else None,
+                },
+                run_id=result["run"].get("run_id"),
+            )
+        )
+    }
+
     return result
