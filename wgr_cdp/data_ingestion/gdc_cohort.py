@@ -40,16 +40,21 @@ def query_cases(project_id: str, *, size: int = 5000, timeout: int = 30) -> list
         "samples.portions.analytes.aliquots.aliquot_id",
         "diagnoses.primary_diagnosis", "diagnoses.tissue_source_site",
     ])
-    filters = {
-        "op": "in",
-        "content": {"field": "project.project_id", "value": [project_id]},
-    }
-    payload = {"filters": filters, "fields": fields, "format": "JSON",
-               "size": size, "from": 0}
-    response = _post_json("cases", payload, timeout=timeout)
-    data = response.get("data") or {}
-    hits = data.get("hits")
-    return hits if isinstance(hits, list) else []
+    filters = {"op": "in", "content": {"field": "project.project_id", "value": [project_id]}}
+    out = []
+    offset = 0
+    while True:
+        payload = {"filters": filters, "fields": fields, "format": "JSON",
+                   "size": size, "from": offset}
+        response = _post_json("cases", payload, timeout=timeout)
+        data = response.get("data") or {}
+        hits = data.get("hits") if isinstance(data.get("hits"), list) else []
+        out.extend(hits)
+        pagination = data.get("pagination") or {}
+        total = pagination.get("total")
+        if not hits or (isinstance(total, int) and offset + len(hits) >= total):
+            return out
+        offset += len(hits)
 
 
 def query_variant_files(project_id: str, *, access: str | None = None,
@@ -73,21 +78,24 @@ def query_variant_files(project_id: str, *, access: str | None = None,
         "cases.samples.sample_type", "cases.samples.tissue_type",
         "cases.samples.tumor_descriptor",
     ])
-    payload = {"filters": filters, "fields": fields, "format": "JSON",
-               "size": size, "from": 0}
-    response = _post_json("files", payload, timeout=timeout)
-    data = response.get("data") or {}
-    hits = data.get("hits")
-    if not isinstance(hits, list):
-        return []
-    variant_categories = {"simple nucleotide variation", "structural variation"}
     out = []
-    for row in hits:
-        category = str(row.get("data_category") or "").strip().lower()
-        dtype = str(row.get("data_type") or "").strip().lower()
-        if category in variant_categories or "variant" in category or "mutation" in dtype:
-            out.append(row)
-    return out
+    offset = 0
+    while True:
+        payload = {"filters": filters, "fields": fields, "format": "JSON",
+                   "size": size, "from": offset}
+        response = _post_json("files", payload, timeout=timeout)
+        data = response.get("data") or {}
+        hits = data.get("hits") if isinstance(data.get("hits"), list) else []
+        for row in hits:
+            category = str(row.get("data_category") or "").strip().lower()
+            dtype = str(row.get("data_type") or "").strip().lower()
+            if category in {"simple nucleotide variation", "structural variation"} or "variant" in category or "mutation" in dtype:
+                out.append(row)
+        pagination = data.get("pagination") or {}
+        total = pagination.get("total")
+        if not hits or (isinstance(total, int) and offset + len(hits) >= total):
+            return out
+        offset += len(hits)
 
 
 def _sample_rows(case: dict) -> list[dict]:
