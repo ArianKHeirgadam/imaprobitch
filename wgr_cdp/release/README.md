@@ -1,4 +1,4 @@
-# Release 1.1.0
+# Release 1.2.0
 
 This release marks the current WGR-CDP implementation as a **research
 bioinformatics framework**.
@@ -17,6 +17,7 @@ bioinformatics framework**.
 - Run tracking and validation
 - A8 independent-validation and leakage gate
 - A9 reproducibility manifest and release-readiness gate
+- A10 GDC/TCGA dataset intake and provenance
 
 ## Validation
 
