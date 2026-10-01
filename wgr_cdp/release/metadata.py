@@ -2,7 +2,7 @@
 
 RELEASE_METADATA = {
     "name": "WGR-CDP",
-    "release": "1.1.0",
+    "release": "1.2.0",
     "status": "research",
     "scope": "genomic cohort analysis, cfDNA-aware candidate discovery and panel design",
     "clinical_diagnostic": False,
