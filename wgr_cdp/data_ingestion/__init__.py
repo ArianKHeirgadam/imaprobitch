@@ -6,3 +6,9 @@ from .normalize import normalize_variant
 from .gdc import fetch_project, query_files, build_intake_record, write_intake_record
 
 __all__ = ["read_vcf", "normalize_variant", "fetch_project", "query_files", "build_intake_record", "write_intake_record"]
+
+from .gdc_acquisition import (
+    inventory_files, classify_file, build_acquisition_manifest,
+    write_acquisition_manifest, write_tsv_manifest, verify_file,
+    download_file, acquire_manifest, register_dataset, write_registration,
+)
