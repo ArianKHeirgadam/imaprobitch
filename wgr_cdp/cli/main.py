@@ -68,6 +68,7 @@ def execute(command):
     if command=="inventory": return {"command":"inventory","status":"completed"}
     if command=="acquire": return {"command":"acquire","status":"completed"}
     if command=="register": return {"command":"register","status":"completed"}
+    if command=="cohort": return {"command":"cohort","status":"completed"}
     raise ValueError(f"Unknown command: {command}")
 
 
