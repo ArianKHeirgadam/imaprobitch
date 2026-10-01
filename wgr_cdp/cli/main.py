@@ -1,6 +1,6 @@
 """WGR-CDP command line interface."""
 import argparse, json
-from .commands import report_command, run_command, validate_command, intake_command
+from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command
 from wgr_cdp.release.reproducibility import release_readiness
 
 
@@ -29,6 +29,24 @@ def build_parser():
     intake.add_argument("--project",default="TCGA-STAD")
     intake.add_argument("--output",required=True)
     intake.add_argument("--file-access",choices=["open","controlled"])
+    inv=sub.add_parser("inventory",help="build a GDC file acquisition manifest")
+    inv.add_argument("--project",default="TCGA-STAD")
+    inv.add_argument("--output",required=True)
+    inv.add_argument("--access",choices=["open","controlled"])
+    inv.add_argument("--category")
+    inv.add_argument("--strategy")
+    inv.add_argument("--format")
+    inv.add_argument("--modality",action="append")
+    inv.add_argument("--max-files",type=int)
+    acq=sub.add_parser("acquire",help="download and checksum-verify files from an A11 manifest")
+    acq.add_argument("--manifest",required=True)
+    acq.add_argument("--output",required=True)
+    acq.add_argument("--token")
+    acq.add_argument("--limit",type=int)
+    reg=sub.add_parser("register",help="register verified local files from an A11 manifest")
+    reg.add_argument("--manifest",required=True)
+    reg.add_argument("--root",required=True)
+    reg.add_argument("--output",required=True)
     report=sub.add_parser("report",help="locate an existing HTML report")
     report.add_argument("--output",required=True)
     return parser
@@ -42,6 +60,9 @@ def execute(command):
         return {"command":"release",**release_readiness()}
     if command=="report": return {"command":"report","status":"completed"}
     if command=="intake": return {"command":"intake","status":"completed"}
+    if command=="inventory": return {"command":"inventory","status":"completed"}
+    if command=="acquire": return {"command":"acquire","status":"completed"}
+    if command=="register": return {"command":"register","status":"completed"}
     raise ValueError(f"Unknown command: {command}")
 
 
@@ -55,6 +76,12 @@ def main(argv=None):
         result=release_readiness()
     elif args.command=="intake":
         result=intake_command(args.project,args.output,args.file_access)
+    elif args.command=="inventory":
+        result=inventory_command(args.project,args.output,args.access,args.category,args.strategy,args.format,args.modality,args.max_files)
+    elif args.command=="acquire":
+        result=acquire_command(args.manifest,args.output,args.token,args.limit)
+    elif args.command=="register":
+        result=register_command(args.manifest,args.root,args.output)
     else:
         result=report_command(args.output)
     print(json.dumps(result,indent=2,default=str)); return 0
