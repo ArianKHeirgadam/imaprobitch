@@ -24,5 +24,5 @@ __all__ = [
     "normalize_weights","weight_sensitivity","selection_stability",
 ]
 from .a5_integration import write_a5_artifacts, DEFAULT_WEIGHTS
-
 from .a6_validation import run_a6, conventional_feature_ranking, bootstrap_rank_stability
+from .a8_validation import run_a8, audit_cohort_leakage, revalidate_selected
