@@ -1,4 +1,4 @@
-# WGR-CDP Final Scientific Audit — A0 to A8
+# WGR-CDP Final Scientific & Reproducibility Audit — A0 to A9
 
 ## Scope
 
@@ -82,6 +82,14 @@ Artifacts include:
 
 Status: implementation complete; empirical scientific conclusions remain conditional on real independent cohorts and verified metadata.
 
+## A9: reproducibility and release gate
+
+A9 is the final provenance layer after A8. Each completed CLI research run records the run ID, full pipeline configuration, Python/platform environment, release identity and a SHA-256 inventory of generated artifacts in `reproducibility_manifest.json`. The manifest excludes itself from its artifact inventory to avoid self-reference.
+
+The `validate` command checks release health; the `release` command exposes the A9 readiness state. A9 does not convert software readiness into biological validation.
+
+Status: implementation complete; reproducibility of empirical findings remains dependent on preserving the same source datasets, metadata, software environment and external resources.
+
 ## Explicit non-claims
 
 The framework must not claim clinical diagnosis, clinical sensitivity/specificity/AUC, prospective utility, assay-validated LoD, independent validation results when no independent cohort is supplied, global literature novelty, or biological efficacy from synthetic software tests.
@@ -90,6 +98,6 @@ The framework must not claim clinical diagnosis, clinical sensitivity/specificit
 
 A passing software test suite establishes implementation behavior, not biological validity. Real datasets, verified metadata, external evidence retrieval and independent validation remain necessary before making empirical scientific claims.
 
-Overall A0–A8 software status: GO for implementation.
+Overall A0–A9 software status: GO for implementation.
 
 Scientific-result status: conditional on real data and independent validation.
