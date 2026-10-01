@@ -9,6 +9,7 @@ def test_release_metadata_is_research_scoped():
     assert "A8 empirical validation and leakage gate" in RELEASE_METADATA["components"]
     assert "A9 reproducibility manifest and release gate" in RELEASE_METADATA["components"]
     assert "A11 GDC acquisition, checksum verification and dataset registration" in RELEASE_METADATA["components"]
+    assert "A12 real GDC case-sample-file cohort construction" in RELEASE_METADATA["components"]
 
 
 def test_release_health_check_passes():
