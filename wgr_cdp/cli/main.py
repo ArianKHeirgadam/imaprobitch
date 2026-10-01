@@ -1,6 +1,6 @@
 """WGR-CDP command line interface."""
 import argparse, json
-from .commands import report_command, run_command, validate_command
+from .commands import report_command, run_command, validate_command, intake_command
 from wgr_cdp.release.reproducibility import release_readiness
 
 
@@ -25,6 +25,10 @@ def build_parser():
     run.add_argument("--bootstrap",type=int,default=200)
     sub.add_parser("validate",help="check release health")
     sub.add_parser("release",help="check release and reproducibility readiness")
+    intake=sub.add_parser("intake",help="discover released GDC project metadata without downloading data")
+    intake.add_argument("--project",default="TCGA-STAD")
+    intake.add_argument("--output",required=True)
+    intake.add_argument("--file-access",choices=["open","controlled"])
     report=sub.add_parser("report",help="locate an existing HTML report")
     report.add_argument("--output",required=True)
     return parser
@@ -37,6 +41,7 @@ def execute(command):
     if command=="release":
         return {"command":"release",**release_readiness()}
     if command=="report": return {"command":"report","status":"completed"}
+    if command=="intake": return {"command":"intake","status":"completed"}
     raise ValueError(f"Unknown command: {command}")
 
 
@@ -48,6 +53,8 @@ def main(argv=None):
         result=validate_command()
     elif args.command=="release":
         result=release_readiness()
+    elif args.command=="intake":
+        result=intake_command(args.project,args.output,args.file_access)
     else:
         result=report_command(args.output)
     print(json.dumps(result,indent=2,default=str)); return 0
