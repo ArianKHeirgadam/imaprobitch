@@ -16,6 +16,7 @@ REQUIRED_COMPONENTS = {
     "A8 empirical validation and leakage gate",
     "A9 reproducibility manifest and release gate",
     "A10 GDC/TCGA dataset intake and provenance",
+    "A11 GDC acquisition, checksum verification and dataset registration",
 }
 
 
