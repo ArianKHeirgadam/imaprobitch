@@ -13,6 +13,7 @@ def test_cli_commands():
     assert execute("inventory")["command"] == "inventory"
     assert execute("acquire")["command"] == "acquire"
     assert execute("register")["command"] == "register"
+    assert execute("cohort")["command"] == "cohort"
 
 
 def test_unknown_cli_command():
