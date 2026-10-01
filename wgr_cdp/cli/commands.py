@@ -188,6 +188,15 @@ def acquire_command(manifest_path, output_dir, token=None, limit=None):
     write_acquisition_manifest(path, result)
     return result
 
+def cohort_command(project="TCGA-STAD", output="results/tcga_stad_cohort.json", access=None, timeout=30):
+    from wgr_cdp.data_ingestion.gdc_cohort import query_cases, query_variant_files, build_cohort_manifest, write_cohort_manifest
+    cases = query_cases(project, timeout=timeout)
+    files = query_variant_files(project, access=access, timeout=timeout)
+    manifest = build_cohort_manifest(project, cases, files)
+    path = write_cohort_manifest(output, manifest)
+    manifest["output"] = str(path)
+    return manifest
+
 def register_command(manifest_path, root, output):
     from wgr_cdp.data_ingestion.gdc_acquisition import register_dataset, write_registration
     manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
