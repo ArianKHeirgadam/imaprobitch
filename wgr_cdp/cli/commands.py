@@ -142,6 +142,17 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     }
     return result
 
+def intake_command(project="TCGA-STAD", output="results/intake", file_access=None):
+    from wgr_cdp.data_ingestion.gdc import (
+        fetch_project, query_files, build_intake_record, write_intake_record,
+    )
+    project_record = fetch_project(project)
+    file_payload = query_files(project, access=file_access) if file_access else None
+    record = build_intake_record(project_record, file_payload)
+    path = write_intake_record(output, record)
+    record["output"] = str(path)
+    return record
+
 def validate_command():
     return run_health_check()
 
