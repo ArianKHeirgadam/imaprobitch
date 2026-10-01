@@ -46,9 +46,15 @@ def test_download_controlled_requires_token(tmp_path):
 
 def test_download_file_uses_endpoint(monkeypatch, tmp_path):
     class FakeResponse:
+        def __init__(self):
+            self._sent = False
         def __enter__(self): return self
         def __exit__(self, *args): return False
-        def read(self, n=-1): return b"abc" if n != 0 else b""
+        def read(self, n=-1):
+            if self._sent:
+                return b""
+            self._sent = True
+            return b"abc"
     seen = {}
     def fake_open(request, timeout=60):
         seen["url"] = request.full_url
