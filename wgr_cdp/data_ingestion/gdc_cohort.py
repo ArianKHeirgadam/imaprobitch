@@ -52,7 +52,7 @@ def query_cases(project_id: str, *, size: int = 5000, timeout: int = 30) -> list
         out.extend(hits)
         pagination = data.get("pagination") or {}
         total = pagination.get("total")
-        if not hits or (isinstance(total, int) and offset + len(hits) >= total):
+        if not hits or total is None or (isinstance(total, int) and offset + len(hits) >= total):
             return out
         offset += len(hits)
 
