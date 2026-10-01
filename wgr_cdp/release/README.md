@@ -1,4 +1,4 @@
-# Release 1.0.0
+# Release 1.1.0
 
 This release marks the current WGR-CDP implementation as a **research
 bioinformatics framework**.
@@ -15,6 +15,8 @@ bioinformatics framework**.
 - Candidate evidence aggregation and prioritization
 - Pipeline execution hardening
 - Run tracking and validation
+- A8 independent-validation and leakage gate
+- A9 reproducibility manifest and release-readiness gate
 
 ## Validation
 
@@ -32,9 +34,17 @@ from wgr_cdp.release import run_health_check
 print(run_health_check())
 ```
 
+A completed research run writes `reproducibility_manifest.json` containing the run ID, configuration, software environment, and SHA-256 hashes of generated artifacts.
+
+The A9 release-readiness check is:
+
+```powershell
+python -m wgr_cdp.cli release
+```
+
 ## Scientific scope
 
-The framework supports genomic research and candidate prioritization. It does
+The framework supports genomic research, cfDNA-aware candidate discovery and panel design. It does
 not establish clinical diagnosis, clinical validity, causal relationships, or
 clinical utility.
 
