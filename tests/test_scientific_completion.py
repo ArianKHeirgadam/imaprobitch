@@ -35,6 +35,46 @@ def test_scanner():
     assert any(item["retained"] for item in result["lineage"])
 
 
+def test_binary_scanner_does_not_treat_missing_as_negative():
+    data = [
+        {"patient": "C1", "group": "case", "region": "1:100-100",
+         "feature_type": "SNV", "status": "Detected"},
+        # C2 belongs to the case cohort but has no observation at this region.
+        {"patient": "C2", "group": "case", "region": "1:200-200",
+         "feature_type": "SNV", "status": "Detected"},
+        {"patient": "H1", "group": "control", "region": "1:100-100",
+         "feature_type": "SNV", "status": "Not detected"},
+        # An unavailable status must not be interpreted as a negative call.
+        {"patient": "H2", "group": "control", "region": "1:100-100",
+         "feature_type": "SNV", "status": "Data unavailable"},
+    ]
+
+    result = next(
+        row for row in exact_scan(data)
+        if row["region"] == "1:100-100" and row["feature_type"] == "SNV"
+    )
+    assert result["case_frequency"] == 1.0
+    assert result["control_frequency"] == 0.0
+    assert result["case_observed"] == 1
+    assert result["control_observed"] == 1
+    assert result["case_carriers"] == 1
+    assert result["control_carriers"] == 0
+
+
+def test_binary_scanner_marks_frequency_unavailable_without_observations():
+    from wgr_cdp.research.multires_scanner import _binary_stats
+
+    result = _binary_stats(
+        [{"patient": "C1", "status": "Data unavailable"}],
+        {"C1"}, {"H1"},
+    )
+    assert result["case_frequency"] is None
+    assert result["control_frequency"] is None
+    assert result["p_value"] == 1.0
+    assert result["case_observed"] == 0
+    assert result["control_observed"] == 0
+
+
 def test_feature_specific_scanner():
     data = [
         {"patient": "C1", "group": "case", "region": "8:100-200", "feature_type": "CNV", "status": "Detected", "log2_ratio": 0.8},
