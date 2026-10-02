@@ -68,16 +68,39 @@ def _numeric(row, keys):
     return None
 
 
+_POSITIVE_STATUSES = {"detected", "positive", "present", "variant detected"}
+_NEGATIVE_STATUSES = {
+    "not detected", "not_detected", "negative", "reference", "wildtype",
+    "wild type", "no variant", "no_variant",
+}
+
+
+def _status(row):
+    return str(row.get("status", "")).strip().lower()
+
+
 def _detected(row):
-    return str(row.get("status", "")).strip().lower() == "detected"
+    return _status(row) in _POSITIVE_STATUSES
 
 
 def _patient_binary_values(rows, patients):
-    values = {p: 0 for p in patients}
+    """Return only patients with an explicit positive or negative observation.
+
+    A missing row or an unknown/unavailable status is not evidence of absence.
+    Multiple rows for one patient are combined conservatively: any explicit
+    positive observation makes the patient positive; otherwise an explicit
+    negative observation is required before the patient is counted as negative.
+    """
+    values = {}
     for row in rows:
         patient = str(row["patient"])
-        if patient in values and _detected(row):
+        if patient not in patients:
+            continue
+        status = _status(row)
+        if status in _POSITIVE_STATUSES:
             values[patient] = 1
+        elif status in _NEGATIVE_STATUSES:
+            values.setdefault(patient, 0)
     return values
 
 
@@ -142,17 +165,37 @@ def _permutation_pvalue(case_values, control_values):
 def _binary_stats(sub, cases, controls):
     case_values = _patient_binary_values(sub, cases)
     control_values = _patient_binary_values(sub, controls)
+    case_n = len(case_values)
+    control_n = len(control_values)
     a = sum(case_values.values())
     b = sum(control_values.values())
-    cf = a / len(cases)
-    hf = b / len(controls)
+
+    # A cohort with no explicit observations cannot support a frequency
+    # comparison. Keep the result non-significant and report unavailable
+    # frequencies rather than fabricating zero prevalence.
+    if not case_n or not control_n:
+        return {
+            "case_frequency": (a / case_n) if case_n else None,
+            "control_frequency": (b / control_n) if control_n else None,
+            "effect_size": 0.0,
+            "p_value": 1.0,
+            "case_carriers": a,
+            "control_carriers": b,
+            "case_observed": case_n,
+            "control_observed": control_n,
+        }
+
+    cf = a / case_n
+    hf = b / control_n
     return {
         "case_frequency": cf,
         "control_frequency": hf,
         "effect_size": abs(cf - hf),
-        "p_value": fisher_exact_2x2(a, b, len(cases) - a, len(controls) - b),
+        "p_value": fisher_exact_2x2(a, b, case_n - a, control_n - b),
         "case_carriers": a,
         "control_carriers": b,
+        "case_observed": case_n,
+        "control_observed": control_n,
     }
 
 
