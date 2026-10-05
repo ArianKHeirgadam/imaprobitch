@@ -7,7 +7,7 @@ from .statistics import benjamini_hochberg, fisher_exact_2x2, per_feature_alpha,
 from .cfdna_score_engine import detectability_score
 from .cfdna_simulator import simulate_detectability, validate_analytical_against_simulation
 from .evidence import normalize_evidence, apply_constraints, transparent_weighted_score, rank_candidates
-from .literature_whitespace import build_queries, search_pubmed, literature_record, summarize_whitespace
+from .literature_whitespace import build_queries, search_pubmed, search_europe_pmc, search_literature, literature_record, build_candidate_literature_records, summarize_whitespace, write_literature_evidence
 from .early_stage import stage_candidate_rates, early_stage_score
 from .specificity import specificity_rates, specificity_score
 from .sensitivity_analysis import normalize_weights, weight_sensitivity, selection_stability
