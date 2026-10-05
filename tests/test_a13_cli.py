@@ -6,3 +6,4 @@ def test_study_cohort_command_parses():
     ])
     assert args.command == "study-cohort"
     assert args.project == "TCGA-STAD"
+    assert args.strategy == "WGS"
