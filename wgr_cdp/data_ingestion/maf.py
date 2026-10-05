@@ -50,7 +50,6 @@ def read_maf(path):
             if header is None:
                 if required.issubset(set(fields)):
                     header = fields
-                    data_lines.append(raw)
                 continue
             # Ignore comment/metadata lines that occur after the header.
             if line.startswith("#"):
