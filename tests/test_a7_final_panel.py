@@ -172,3 +172,9 @@ def test_final_panel_honors_assay_and_fpr_constraints_before_optimization():
     assert result["eligible_candidate_ids"] == ["C"]
     assert result["ineligible_count"] == 2
     assert result["panel"]["selected"] == ["C"]
+
+
+def test_layer_contribution_requires_layer_metadata():
+    from wgr_cdp.research.panel_optimizer import layer_contribution
+    matrix={"P1":{"A":1,"B":0},"P2":{"A":0,"B":1}}
+    assert layer_contribution(matrix,["A","B"],None)["status"] == "Data unavailable"
