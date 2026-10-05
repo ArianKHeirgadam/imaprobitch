@@ -46,3 +46,20 @@ def test_classify_blood_normal_before_generic_normal_tissue_type():
         "sample_type": "Solid Tissue Normal",
         "tissue_type": "Normal",
     }) == "NORMAL_SOLID"
+
+def test_gdc_post_retries_transient_tls(monkeypatch):
+    from wgr_cdp.data_ingestion import gdc_cohort as g
+    calls = {"n": 0}
+    class FakeResponse:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return b'{"data":{"hits":[],"pagination":{"total":0}}}'
+    def fake_open(request, timeout=30):
+        calls["n"] += 1
+        if calls["n"] < 2:
+            raise OSError("transient TLS failure")
+        return FakeResponse()
+    monkeypatch.setattr(g, "urlopen", fake_open)
+    result = g._post_json("cases", {"filters": {}})
+    assert calls["n"] == 2
+    assert result["data"]["pagination"]["total"] == 0
