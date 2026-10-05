@@ -311,6 +311,13 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     )
     append_c12_final_audit(output, result["c12"])
 
+    # Scientific integrity gate: do not create a "release-ready" provenance
+    # manifest when the integration/audit contract itself failed.
+    if result["c11"].get("status") != "PASS":
+        raise RuntimeError("C-11 integration gate failed; A9 release hashing aborted")
+    if result["c12"].get("status") != "PASS":
+        raise RuntimeError("C-12 final scientific audit failed; A9 release hashing aborted")
+
     # A9 hashes the completed C-11 and C-12 artifacts.
     from wgr_cdp.release.reproducibility import write_reproducibility_manifest
     result["a9"] = {
