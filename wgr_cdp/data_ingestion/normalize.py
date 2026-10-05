@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from pathlib import Path
 import hashlib
-import json
 
 
 UNAVAILABLE = "Data unavailable"
@@ -180,10 +179,8 @@ def build_fasta_index(fasta_path, index_path=None):
                 line_bases = len(stripped)
                 line_width = len(raw)
             elif len(stripped) != line_bases:
-                # The last sequence line may be shorter; other widths are not
-                # safe for deterministic random access.
-                if handle.peek(1) if hasattr(handle, "peek") else False:
-                    pass
+                # Only the final line of a contig may be shorter than the
+                # established FASTA line width.
                 if len(stripped) > line_bases:
                     raise ValueError(
                         f"Inconsistent FASTA line width for contig {current}"
