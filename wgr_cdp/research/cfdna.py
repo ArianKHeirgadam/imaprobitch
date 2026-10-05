@@ -24,6 +24,21 @@ def power_curve(tumor_fractions=None,depths=(100,300,1000),**kwargs):
     fractions=tuple(tumor_fractions or DEFAULT_TUMOR_FRACTIONS)
     return [{"tumor_fraction":f,"depth":d,"power":detectability_probability(f,depth=d,**kwargs)} for d in depths for f in fractions]
 
+def lod_curve(depths=(100,300,1000),target_power=.95,lower=1e-5,upper=.5,**kwargs):
+    """Return an explicit LoD-vs-depth table; unavailable inputs remain None."""
+    return [
+        {"depth": int(depth), "target_power": float(target_power),
+         "lod_tumor_fraction": estimate_lod(
+             depth=int(depth), target_power=target_power,
+             lower=lower, upper=upper, **kwargs
+         )}
+        for depth in depths
+    ]
+
+def detectability_grid(tumor_fractions=None, depths=(100,300,1000), **kwargs):
+    """Return a stable tumor-fraction/depth grid for downstream reporting."""
+    return power_curve(tumor_fractions=tumor_fractions, depths=depths, **kwargs)
+
 def estimate_lod(depth=300,target_power=.95,lower=1e-5,upper=.5,**kwargs):
     if not 0<target_power<1: raise ValueError("target_power must be in (0,1)")
     if detectability_probability(upper,depth=depth,**kwargs)<target_power: return None
@@ -48,9 +63,15 @@ def patient_candidate_matrix(patients, candidates, candidate_features, assay=Non
             if s.get("present") is False:
                 out[patient][candidate] = 0.0
                 continue
+            # Missing assay inputs are not evidence for a default tumor fraction
+            # or sequencing depth. Preserve the scientific contract instead of
+            # fabricating detectability.
+            if s.get("tumor_fraction") in (None, "") or s.get("depth") in (None, ""):
+                out[patient][candidate] = "Data unavailable"
+                continue
             out[patient][candidate] = detectability_probability(
-                s.get("tumor_fraction", .01),
-                depth=s.get("depth", 300),
+                s.get("tumor_fraction"),
+                depth=s.get("depth"),
                 informative_sites=s.get("informative_sites", 1),
                 copy_number=s.get("copy_number", 2),
                 dilution=s.get("dilution", 1),
