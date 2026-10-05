@@ -116,6 +116,7 @@ def _optimized_selection(ranked, matrix, k):
 
 def run_ablations(candidates, base_weights, constraints=None, matrix=None, k=15):
     constraints=dict(constraints or {})
+    k=min(15,max(0,int(k)))
     output=[]
     for name in A6_ABLATIONS:
         if name=="full_wgr_cdp":
@@ -144,15 +145,18 @@ def run_ablations(candidates, base_weights, constraints=None, matrix=None, k=15)
 def bootstrap_rank_stability(candidates, weights, constraints=None, n_bootstrap=200, k=15, seed=42):
     if not candidates:
         return {"status":"Data unavailable","n_bootstrap":0,"selection_frequency":{}}
+    n_bootstrap=int(n_bootstrap)
+    if n_bootstrap <= 0:
+        return {"status":"Data unavailable","n_bootstrap":0,"selection_frequency":{}}
     rng=Random(seed); counts=Counter()
     n=len(candidates)
-    for _ in range(int(n_bootstrap)):
+    for _ in range(n_bootstrap):
         sample=[candidates[rng.randrange(n)] for _ in range(n)]
         ranked=rank_candidates(sample,weights,constraints)["ranked"][:k]
         for row in ranked:
             counts[_id(row)]+=1
     return {
-        "status":"Available","n_bootstrap":int(n_bootstrap),"k":int(k),"seed":int(seed),
+        "status":"Available","n_bootstrap":n_bootstrap,"k":min(15,max(0,int(k))),"seed":int(seed),
         "selection_frequency":{key:value/int(n_bootstrap) for key,value in sorted(counts.items())},
     }
 
