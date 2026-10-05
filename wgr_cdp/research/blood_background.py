@@ -45,6 +45,52 @@ def estimate_background(rows, key="region", sources=None):
             }
     return output
 
+
+def build_pon(rows, key="region", normal_groups=("control", "healthy", "normal")):
+    """Build a source-observation-aware Panel of Normals from explicit normal calls."""
+    positives = {"detected", "positive", "present", "variant detected"}
+    negatives = {"not detected", "not_detected", "negative", "reference", "wildtype", "wild type", "no variant", "no_variant"}
+    groups = {str(g).strip().lower() for g in normal_groups}
+    observed = defaultdict(set)
+    carriers = defaultdict(set)
+    for row in rows:
+        if str(row.get("group", "")).strip().lower() not in groups:
+            continue
+        feature = str(row.get(key, ""))
+        patient = str(row.get("patient") or row.get("sample_id") or "")
+        if not patient or not feature:
+            continue
+        status = str(row.get("status", "")).strip().lower()
+        if status in positives or status in negatives:
+            observed[feature].add(patient)
+            if status in positives:
+                carriers[feature].add(patient)
+    features = sorted(set(observed) | {str(r.get(key, "")) for r in rows if str(r.get(key, ""))})
+    out = {}
+    for feature in features:
+        n = len(observed.get(feature, set()))
+        k = len(carriers.get(feature, set()))
+        out[feature] = {
+            "observed_samples": n,
+            "carrier_samples": k,
+            "frequency": (k / n) if n else None,
+            "status": "Available" if n else "Data unavailable",
+        }
+    return out
+
+
+def annotate_pon(candidates, pon, key="region"):
+    """Attach PoN frequency without treating unavailable PoN as zero."""
+    output = []
+    for row in candidates:
+        x = dict(row)
+        feature = str(x.get(key) or x.get("feature") or "")
+        item = pon.get(feature, {})
+        x["pon_frequency"] = item.get("frequency")
+        x["pon_status"] = item.get("status", "Data unavailable")
+        output.append(x)
+    return output
+
 def _row_background(row, background):
     key = str(row.get("region") or row.get("feature") or "")
     source_data = background.get(key, {})
@@ -59,6 +105,7 @@ def filter_candidates(candidates, background, max_background=0.10):
         bg = _row_background(x, background)
         x["blood_background_max"] = bg
         x["blood_background_status"] = "Data unavailable" if bg is None else ("pass" if bg <= max_background else "fail")
+        x["blood_background_safety"] = "Data unavailable" if bg is None else max(0.0, min(1.0, 1.0 - bg))
         (kept if bg is None or bg <= max_background else rejected).append(x)
     return kept, rejected
 
