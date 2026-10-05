@@ -288,3 +288,31 @@ def test_background_safety_is_explicit_when_source_is_available():
     assert not rejected
     assert kept[0]["blood_background_max"] == 0.08
     assert kept[0]["blood_background_safety"] == 0.92
+
+
+def test_patient_level_split_is_disjoint_and_reproducible():
+    from wgr_cdp.research.validation import patient_level_split, audit_three_way_split
+    patients=[f"P{i}" for i in range(1,21)]
+    first=patient_level_split(patients, validation_fraction=.2, test_fraction=.2, seed=7)
+    second=patient_level_split(patients, validation_fraction=.2, test_fraction=.2, seed=7)
+    assert first == second
+    assert len(first["discovery"]) == 12
+    assert len(first["validation"]) == 4
+    assert len(first["test"]) == 4
+    assert len(set(first["discovery"]) & set(first["validation"])) == 0
+    assert len(set(first["discovery"]) & set(first["test"])) == 0
+    assert len(set(first["validation"]) & set(first["test"])) == 0
+    audit=audit_three_way_split(
+        first["discovery"], first["validation"], first["test"]
+    )
+    assert audit["status"] == "Available"
+    assert audit["leakage_free"] is True
+
+
+def test_patient_level_split_rejects_invalid_fractions():
+    from wgr_cdp.research.validation import patient_level_split
+    try:
+        patient_level_split(["P1"], validation_fraction=.6, test_fraction=.4)
+        assert False
+    except ValueError:
+        pass
