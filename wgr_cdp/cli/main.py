@@ -1,6 +1,6 @@
 """WGR-CDP command line interface."""
 import argparse, json
-from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, one_kg_select_command
+from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, one_kg_select_command, one_kg_subset_command
 from wgr_cdp.release.reproducibility import release_readiness
 
 
@@ -66,6 +66,10 @@ def build_parser():
     ss.add_argument("--panel",required=True)
     ss.add_argument("--output",required=True)
     ss.add_argument("--samples",type=int,default=250)
+    ks=sub.add_parser("1000g-subset",help="subset a downloaded 1000G multi-sample VCF using a sample list")
+    ks.add_argument("--input",required=True)
+    ks.add_argument("--samples",required=True)
+    ks.add_argument("--output",required=True)
     reg=sub.add_parser("register",help="register verified local files from an A11 manifest")
     reg.add_argument("--manifest",required=True)
     reg.add_argument("--root",required=True)
@@ -114,6 +118,8 @@ def main(argv=None):
         result=maf_to_vcf_command(args.input,args.output)
     elif args.command=="1000g-select":
         result=one_kg_select_command(args.panel,args.output,args.samples)
+    elif args.command=="1000g-subset":
+        result=one_kg_subset_command(args.input,args.samples,args.output)
     elif args.command=="validate":
         result=validate_command()
     elif args.command=="release":
