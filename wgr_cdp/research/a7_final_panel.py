@@ -26,6 +26,7 @@ from .panel_optimizer import (
     layer_contribution,
 )
 from .a5_integration import DEFAULT_WEIGHTS
+from .patient_coverage import panel_presence_coverage, greedy_presence_panel, exact_presence_panel
 
 
 def load_multimodal_evidence(path):
@@ -108,6 +109,31 @@ def _matrix_for_candidates(matrix, candidate_ids):
     return restricted if any(restricted.values()) else None
 
 
+def _presence_for_candidates(matrix, candidate_ids):
+    if not matrix:
+        return None
+    ids = set(candidate_ids)
+    restricted = {}
+    for patient, row in matrix.items():
+        restricted[patient] = {
+            candidate: int(row[candidate])
+            for candidate in ids
+            if candidate in row and row[candidate] in (0, 1)
+        }
+    return restricted if any(restricted.values()) else None
+
+
+def _panel_optimize_presence(matrix, max_k, min_gain=0.02):
+    if not matrix:
+        return {"status": "Data unavailable", "method": "not_run", "selected": [], "coverage": "Data unavailable", "k": 0}
+    candidate_count = len({candidate for row in matrix.values() for candidate in row})
+    if candidate_count <= 22:
+        exact = exact_presence_panel(matrix, max_k=min(15, int(max_k)), min_gain=float(min_gain))
+        if exact.get("status") == "Available":
+            return exact
+    return greedy_presence_panel(matrix, max_k=min(15, int(max_k)), min_gain=float(min_gain))
+
+
 def _panel_optimize(matrix, max_k, fpr_target, min_gain=0.02):
     if not matrix:
         return {
@@ -150,6 +176,7 @@ def _panel_optimize(matrix, max_k, fpr_target, min_gain=0.02):
 def build_final_panel(
     candidates,
     matrix=None,
+    presence_matrix=None,
     max_k=15,
     fpr_target=0.05,
     weights=None,
@@ -157,6 +184,7 @@ def build_final_panel(
     min_gain=0.02,
     bootstrap=200,
     candidate_layers=None,
+    presence_matrix=None,
 ):
     """Produce the final ranked candidate set and complementary coverage panel."""
     weights = dict(weights or DEFAULT_WEIGHTS)
@@ -171,8 +199,15 @@ def build_final_panel(
 
     # Optimize across the entire eligible universe, not merely the first K ranks.
     restricted = _matrix_for_candidates(matrix, eligible_ids)
+    restricted_presence = _presence_for_candidates(presence_matrix, eligible_ids)
     effective_k = min(15, max(0, int(max_k)))
-    optimization = _panel_optimize(restricted, effective_k, fpr_target, min_gain=min_gain)
+    probability_optimization = _panel_optimize(
+        restricted, effective_k, fpr_target, min_gain=min_gain
+    )
+    presence_optimization = _panel_optimize_presence(
+        restricted_presence, effective_k, min_gain=min_gain
+    )
+    optimization = presence_optimization if presence_optimization.get("status") == "Available" else probability_optimization
 
     diagnostics = {
         "coverage_curve": coverage_curve(restricted, effective_k, min_gain=min_gain) if restricted else "Data unavailable",
@@ -183,6 +218,9 @@ def build_final_panel(
             optimization.get("selected", []),
             candidate_layers or {},
         ) if restricted and candidate_layers else "Data unavailable",
+        "selection_objective": "patient_presence" if presence_optimization.get("status") == "Available" else "probabilistic_detectability",
+        "probability_optimization": probability_optimization,
+        "presence_optimization": presence_optimization,
     }
 
     if optimization["status"] == "Available":
@@ -190,12 +228,21 @@ def build_final_panel(
     else:
         selected_ids = eligible_ids[: int(max_k)]
 
-    # Keep the ranking visible independently from the optimized panel.
     ranked_top_k = eligible_ids[: int(max_k)]
     selected_coverage = (
-        panel_coverage(restricted, selected_ids)
+        panel_presence_coverage(restricted_presence, selected_ids)["coverage"]
+        if restricted_presence is not None
+        else panel_coverage(restricted, selected_ids)
         if restricted is not None
         else "Data unavailable"
+    )
+    probability_coverage = (
+        panel_coverage(restricted, selected_ids)
+        if restricted is not None else "Data unavailable"
+    )
+    presence_coverage = (
+        panel_presence_coverage(restricted_presence, selected_ids)
+        if restricted_presence is not None else "Data unavailable"
     )
 
     return {
@@ -212,6 +259,8 @@ def build_final_panel(
             **optimization,
             "selected": selected_ids,
             "coverage": selected_coverage,
+            "probability_coverage": probability_coverage,
+            "presence_coverage": presence_coverage,
             "max_k": effective_k,
             "min_marginal_gain": float(min_gain),
         },
@@ -240,6 +289,7 @@ def write_final_panel(
     result = build_final_panel(
         candidates,
         matrix=matrix,
+        presence_matrix=presence_matrix,
         max_k=max_k,
         fpr_target=fpr_target,
         weights=weights,
