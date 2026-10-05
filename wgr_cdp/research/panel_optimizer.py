@@ -135,8 +135,12 @@ def panel_bootstrap_stability(matrix, max_k=15, n_bootstrap=200, seed=42):
 
 
 def layer_contribution(matrix, selected, candidate_layers):
-    """Measure marginal coverage contribution by feature layer/type."""
-    if not matrix:
+    """Measure leave-one-layer-out coverage contribution.
+
+    Missing layer metadata is preserved as Data unavailable and never becomes
+    a biological category or zero contribution.
+    """
+    if not matrix or not selected or candidate_layers is None:
         return {"status": "Data unavailable"}
     baseline = panel_coverage(matrix, selected)
     grouped = {}
