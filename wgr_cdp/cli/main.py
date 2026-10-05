@@ -82,6 +82,11 @@ def build_parser():
 
 def execute(command):
     if command=="run": return {"command":"run","status":"completed"}
+    if command=="data-plan": return {"command":"data-plan","status":"available"}
+    if command=="1000g-manifest": return {"command":"1000g-manifest","status":"available"}
+    if command=="reference-acquire": return {"command":"reference-acquire","status":"available"}
+    if command=="maf-to-vcf": return {"command":"maf-to-vcf","status":"available"}
+    if command=="1000g-select": return {"command":"1000g-select","status":"available"}
     if command=="validate":
         return {"command":"validate",**validate_command()}
     if command=="release":
