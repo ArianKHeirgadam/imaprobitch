@@ -151,7 +151,7 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     write_a8_artifacts(output, result["a8"])
     append_a8_to_report(output, result["a8"])
 
-    from wgr_cdp.research.robustness import write_c09_artifacts
+    from wgr_cdp.research.robustness import write_c09_artifacts, append_c09_to_report
     result["c09"] = write_c09_artifacts(
         output,
         a5_candidates,
@@ -164,6 +164,7 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         seed=42,
         k=min(15, int(max_panel_size)),
     )
+    append_c09_to_report(output, result["c09"])
 
     with (Path(output) / "a6_ablation.csv").open("w", encoding="utf-8", newline="") as h:
         fields=["ablation","k","coverage","ineligible","unscored"]
