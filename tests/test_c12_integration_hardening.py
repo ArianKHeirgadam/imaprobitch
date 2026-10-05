@@ -20,6 +20,25 @@ def _candidate(cid, freq=0.5):
     }
 
 
+def test_a5_preserves_recurrence_and_cfdna_inputs(tmp_path: Path):
+    candidates = [{
+        **_candidate("A", 0.75),
+        "clonality": 0.80,
+        "allele_fraction": 0.25,
+        "mappability": 0.99,
+        "prior_cfdna_evidence": 0.70,
+        "alteration_type_support": 0.60,
+    }]
+    result = write_a5_artifacts(tmp_path, candidates, literature_search=False)
+    assert Path(result["c12_candidate_prioritization"]).exists()
+    rows = list(csv.DictReader((tmp_path / "candidate_evidence.csv").open(
+        encoding="utf-8", newline=""
+    )))
+    row = rows[0]
+    assert float(row["recurrence_prevalence"]) == 0.75
+    assert float(row["cfdna_suitability"]) > 0.0
+
+
 def test_a5_uses_explicit_presence_for_patient_coverage(tmp_path: Path):
     candidates = [_candidate("A")]
     presence = {"P1": {"A": 1}, "P2": {"A": 0}, "P3": {"A": 1}}
