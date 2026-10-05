@@ -21,12 +21,12 @@ def _sample_class(sample):
         return "TUMOR"
     if sample_type == "recurrent tumor" or "recurrent tumor" in sample_type:
         return "TUMOR"
+    if sample_type == "blood derived normal" or "blood derived normal" in sample_type:
+        return "NORMAL_BLOOD"
     if sample_type == "solid tissue normal" or "solid tissue normal" in sample_type:
         return "NORMAL_SOLID"
     if tissue_type == "normal":
         return "NORMAL_SOLID"
-    if sample_type == "blood derived normal" or "blood derived normal" in sample_type:
-        return "NORMAL_BLOOD"
     if "tumor" in descriptor:
         return "TUMOR"
     return "UNCLASSIFIED"
