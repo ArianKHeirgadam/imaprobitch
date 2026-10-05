@@ -111,3 +111,93 @@ def convert_maf_to_vcf(input_path, output_dir, *, prefix="tcga_stad"):
         "normalization_required": True,
         "files": outputs,
     }
+
+
+def qc_vcf_adapter(path):
+    """Run structural QC on a WGR-CDP adapter VCF."""
+    path = Path(path)
+    result = {
+        "path": str(path),
+        "status": "Data unavailable",
+        "record_count": 0,
+        "invalid_record_count": 0,
+        "missing_source_tag_count": 0,
+        "normalization_required": True,
+    }
+    if not path.exists():
+        return result
+    with path.open("r", encoding="utf-8") as handle:
+        for raw in handle:
+            line = raw.rstrip("\r\n")
+            if not line or line.startswith("#"):
+                continue
+            result["record_count"] += 1
+            fields = line.split("\t")
+            invalid = len(fields) < 8
+            if not invalid:
+                try:
+                    invalid = int(fields[1]) < 1
+                except (TypeError, ValueError):
+                    invalid = True
+            if not invalid and (not fields[3] or not fields[4]):
+                invalid = True
+            if invalid:
+                result["invalid_record_count"] += 1
+            if "SOURCE=GDC_MASKED_SOMATIC_MAF" not in fields[7] if len(fields) >= 8 else True:
+                result["missing_source_tag_count"] += 1
+    result["status"] = (
+        "PASS"
+        if result["record_count"] > 0
+        and result["invalid_record_count"] == 0
+        and result["missing_source_tag_count"] == 0
+        else "FAIL" if result["invalid_record_count"] > 0
+        or result["missing_source_tag_count"] > 0
+        else "Data unavailable"
+    )
+    return result
+
+def convert_maf_directory_to_vcf(input_dir, output_dir, *, pattern="*.maf.gz"):
+    """Convert all MAF files in a directory and emit a batch provenance manifest."""
+    input_dir = Path(input_dir)
+    output_dir = Path(output_dir)
+    files = sorted(input_dir.glob(pattern))
+    results = []
+    for source in files:
+        converted = convert_maf_to_vcf(
+            source,
+            output_dir,
+            prefix=source.name.replace(".maf.gz", "").replace(".maf", ""),
+        )
+        qc = []
+        for item in converted.get("files") or []:
+            qc.append(qc_vcf_adapter(item["path"]))
+        results.append({
+            "source_file": str(source),
+            "source_format": "GDC masked somatic MAF",
+            "conversion": converted,
+            "qc": qc,
+            "normalization_required": True,
+        })
+    files_with_outputs = sum(bool(r["conversion"].get("files")) for r in results)
+    qc_items = [item for r in results for item in r["qc"]]
+    status = (
+        "PASS"
+        if results and files_with_outputs == len(results)
+        and qc_items and all(item["status"] == "PASS" for item in qc_items)
+        else "Data unavailable" if not results else "CONDITIONAL"
+    )
+    return {
+        "schema_version": "A13-MAF-BATCH-1",
+        "status": status,
+        "input_dir": str(input_dir),
+        "output_dir": str(output_dir),
+        "input_file_count": len(files),
+        "converted_file_count": files_with_outputs,
+        "sample_count": sum(r["conversion"].get("sample_count", 0) for r in results),
+        "variant_record_count": sum(r["conversion"].get("record_count", 0) for r in results),
+        "qc_record_count": sum(item["record_count"] for item in qc_items),
+        "qc_invalid_record_count": sum(item["invalid_record_count"] for item in qc_items),
+        "qc_missing_source_tag_count": sum(item["missing_source_tag_count"] for item in qc_items),
+        "normalization_required": True,
+        "results": results,
+    }
