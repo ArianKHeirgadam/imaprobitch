@@ -494,15 +494,28 @@ def one_kg_subset_command(input_path, sample_list, output_path):
     ]
     return subset_vcf_samples(input_path, output_path, ids)
 
-def study_cohort_command(project="TCGA-STAD", output="results/tcga_stad_study.json", access=None, timeout=30):
+def study_cohort_command(project="TCGA-STAD", output="results/tcga_stad_study.json", access=None, timeout=30, strategy="WGS"):
     from wgr_cdp.data_ingestion.gdc_cohort import query_cases, query_variant_files, build_cohort_manifest
-    from wgr_cdp.data_ingestion.study_cohort import select_paired_tcga_cases, select_open_variant_files, write_study_selection
+    from wgr_cdp.data_ingestion.study_cohort import select_paired_tcga_cases, select_variant_files, write_study_selection
     cases = query_cases(project, timeout=timeout)
     files = query_variant_files(project, access=access, timeout=timeout)
     cohort = build_cohort_manifest(project, cases, files)
     pairing = select_paired_tcga_cases(cohort)
-    pairing["open_snv_files"] = select_open_variant_files(files, modality="SNV_INDEL", strategy="WXS")
-    pairing["open_cnv_files"] = select_open_variant_files(files, modality="CNV", strategy="")
+    selected_case_ids = [item["case_id"] for item in pairing.get("selected", [])]
+    pairing["selected_strategy"] = strategy
+    pairing["selected_access"] = access or "all"
+    pairing["snv_indel_files"] = select_variant_files(
+        files, modality="SNV_INDEL", access=access, strategy=strategy,
+        case_ids=selected_case_ids,
+    )
+    pairing["cnv_files"] = select_variant_files(
+        files, modality="CNV", access=access, strategy=strategy,
+        case_ids=selected_case_ids,
+    )
+    pairing["public_wxs_maf_fallback"] = select_variant_files(
+        files, modality="SNV_INDEL", access="open", strategy="WXS",
+        case_ids=selected_case_ids,
+    )
     pairing["project_case_count"] = cohort.get("case_count_observed", 0)
     pairing["project_sample_count"] = cohort.get("sample_count", 0)
     pairing["data_role_warning"] = (
