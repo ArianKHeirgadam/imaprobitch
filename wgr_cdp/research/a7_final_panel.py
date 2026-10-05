@@ -181,7 +181,6 @@ def _panel_optimize(matrix, max_k, fpr_target, min_gain=0.02):
 def build_final_panel(
     candidates,
     matrix=None,
-    presence_matrix=None,
     max_k=15,
     fpr_target=0.05,
     weights=None,
@@ -189,8 +188,10 @@ def build_final_panel(
     min_gain=0.02,
     bootstrap=200,
     candidate_layers=None,
+    presence_matrix=None,
 ):
     """Produce the final ranked candidate set and complementary coverage panel."""
+"
     weights = dict(weights or DEFAULT_WEIGHTS)
     constraints = dict(constraints or {"min_detectability": 0.0, "max_background": 1.0})
 
@@ -246,9 +247,14 @@ def build_final_panel(
         panel_coverage(restricted, selected_ids)
         if restricted is not None else "Data unavailable"
     )
-    presence_coverage = (
+    presence_coverage_detail = (
         panel_presence_coverage(restricted_presence, selected_ids)
         if restricted_presence is not None else "Data unavailable"
+    )
+    presence_coverage = (
+        presence_coverage_detail["coverage"]
+        if isinstance(presence_coverage_detail, dict)
+        else presence_coverage_detail
     )
 
     return {
@@ -267,6 +273,7 @@ def build_final_panel(
             "coverage": selected_coverage,
             "probability_coverage": probability_coverage,
             "presence_coverage": presence_coverage,
+            "presence_coverage_detail": presence_coverage_detail,
             "max_k": effective_k,
             "min_marginal_gain": float(min_gain),
         },
@@ -279,7 +286,6 @@ def write_final_panel(
     output_dir,
     candidates,
     matrix=None,
-    presence_matrix=None,
     max_k=15,
     fpr_target=0.05,
     weights=None,
@@ -287,6 +293,7 @@ def write_final_panel(
     min_gain=0.02,
     bootstrap=200,
     candidate_layers=None,
+    presence_matrix=None,
 ):
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
