@@ -61,6 +61,18 @@ def audit_c12(output_dir, config=None, run_id=None):
         "One or more mandatory C-12 artifacts are missing or empty.",
     )
 
+    # C-11 is the immediate upstream integration gate.
+    try:
+        c11 = _json(root / "c11_integration_manifest.json")
+        check(
+            "c11_upstream_gate",
+            c11.get("schema_version") == "c11.integration.v1"
+            and c11.get("status") == "PASS",
+            f"schema={c11.get('schema_version')}; status={c11.get('status')}",
+        )
+    except Exception as exc:
+        check("c11_upstream_gate", False, f"C-11 manifest unreadable: {type(exc).__name__}")
+
     headers = _csv_headers(root / "candidate_evidence.csv")
     score_fields = {
         "recurrence_prevalence",
