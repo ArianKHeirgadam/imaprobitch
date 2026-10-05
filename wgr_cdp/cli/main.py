@@ -1,6 +1,6 @@
 """WGR-CDP command line interface."""
 import argparse, json
-from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command
+from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, one_kg_select_command
 from wgr_cdp.release.reproducibility import release_readiness
 
 
@@ -62,6 +62,10 @@ def build_parser():
     mt=sub.add_parser("maf-to-vcf",help="convert a GDC masked somatic MAF into per-sample adapter VCFs")
     mt.add_argument("--input",required=True)
     mt.add_argument("--output",required=True)
+    ss=sub.add_parser("1000g-select",help="select a deterministic population-balanced 1000G sample list")
+    ss.add_argument("--panel",required=True)
+    ss.add_argument("--output",required=True)
+    ss.add_argument("--samples",type=int,default=250)
     reg=sub.add_parser("register",help="register verified local files from an A11 manifest")
     reg.add_argument("--manifest",required=True)
     reg.add_argument("--root",required=True)
@@ -103,6 +107,8 @@ def main(argv=None):
         result=reference_acquire_command(args.manifest,args.output,args.limit,args.timeout)
     elif args.command=="maf-to-vcf":
         result=maf_to_vcf_command(args.input,args.output)
+    elif args.command=="1000g-select":
+        result=one_kg_select_command(args.panel,args.output,args.samples)
     elif args.command=="validate":
         result=validate_command()
     elif args.command=="release":
@@ -123,6 +129,8 @@ def main(argv=None):
         result=reference_acquire_command(args.manifest,args.output,args.limit,args.timeout)
     elif args.command=="maf-to-vcf":
         result=maf_to_vcf_command(args.input,args.output)
+    elif args.command=="1000g-select":
+        result=one_kg_select_command(args.panel,args.output,args.samples)
     else:
         result=report_command(args.output)
     print(json.dumps(result,indent=2,default=str)); return 0
