@@ -15,7 +15,9 @@ def test_a5_writes_integrated_artifacts(tmp_path):
         assert (Path(tmp_path)/name).exists()
     lit=json.loads((Path(tmp_path)/"literature_whitespace.json").read_text())
     assert lit["searched"] is False
-    assert lit["records"] == []
+    assert result["c10"]["schema_version"] == "c10.literature.v1"
+    assert Path(result["c10"]["json"]).exists()
+    assert Path(result["c10"]["csv"]).exists()
 
 def test_a5_hard_constraint_excludes_candidate(tmp_path):
     candidates=[
