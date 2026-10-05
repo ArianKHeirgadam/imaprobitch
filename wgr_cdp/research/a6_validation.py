@@ -207,28 +207,86 @@ def run_a6(candidates, weights, constraints=None, matrix=None, k=15,
 
 
 def _design_matrix(candidates, features=None):
-    """Build a deterministic numeric matrix from candidate feature dictionaries."""
+    """Build a deterministic numeric matrix with training-only median imputation.
+
+    Missing/non-finite feature values are not treated as observed zeros. Imputation
+    statistics are derived only from the supplied training rows.
+    """
+    import math
     features = list(features or sorted({
         key for row in candidates for key, value in row.items()
         if key not in {"candidate_id", "candidate", "feature", "gene"}
-        and isinstance(value, (int, float))
+        and isinstance(value, (int, float)) and not isinstance(value, bool)
     }))
+    observed = {}
+    for feature in features:
+        values = []
+        for row in candidates:
+            value = row.get(feature)
+            try:
+                value = float(value)
+            except (TypeError, ValueError, OverflowError):
+                continue
+            if math.isfinite(value):
+                values.append(value)
+        if values:
+            values.sort()
+            mid = len(values) // 2
+            observed[feature] = values[mid] if len(values) % 2 else (values[mid - 1] + values[mid]) / 2.0
+    features = [feature for feature in features if feature in observed]
     X = []
     for row in candidates:
-        X.append([float(row.get(feature, 0.0) or 0.0) for feature in features])
+        values = []
+        for feature in features:
+            try:
+                value = float(row.get(feature))
+            except (TypeError, ValueError, OverflowError):
+                value = observed[feature]
+            if not math.isfinite(value):
+                value = observed[feature]
+            values.append(value)
+        X.append(values)
     return X, features
+
+
+def _validated_binary_labels(labels, n):
+    if labels is None or len(labels) != n or n == 0:
+        return None
+    output = []
+    for value in labels:
+        if isinstance(value, bool):
+            output.append(float(value))
+            continue
+        try:
+            value = float(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if value not in (0.0, 1.0):
+            return None
+        output.append(value)
+    if len(set(output)) < 2:
+        return None
+    return output
 
 
 def logistic_baseline(candidates, labels=None, k=15, l2=1e-2, steps=500, learning_rate=0.05):
     """Dependency-light logistic baseline; returns Data unavailable without labels."""
-    if labels is None:
+    labels = _validated_binary_labels(labels, len(candidates))
+    if labels is None or not candidates:
         return {"status": "Data unavailable", "selected": [], "features": []}
-    if len(labels) != len(candidates) or not candidates:
+    try:
+        l2 = float(l2)
+        steps = int(steps)
+        learning_rate = float(learning_rate)
+    except (TypeError, ValueError, OverflowError):
+        return {"status": "Data unavailable", "selected": [], "features": []}
+    import math
+    if not math.isfinite(l2) or l2 < 0 or steps <= 0 or not math.isfinite(learning_rate) or learning_rate <= 0:
         return {"status": "Data unavailable", "selected": [], "features": []}
     X, features = _design_matrix(candidates)
     if not X or not features:
         return {"status": "Data unavailable", "selected": [], "features": features}
-    y = [float(v) for v in labels]
+    y = labels
     weights = [0.0] * len(features)
     bias = 0.0
     import math
@@ -263,14 +321,24 @@ def logistic_baseline(candidates, labels=None, k=15, l2=1e-2, steps=500, learnin
 def elastic_net_coordinate_descent(candidates, labels=None, alpha=0.01, l1_ratio=0.5,
                                    k=15, steps=500, learning_rate=0.02):
     """Dependency-light elastic-net coefficient baseline."""
-    if labels is None:
+    labels = _validated_binary_labels(labels, len(candidates))
+    if labels is None or not candidates:
         return {"status": "Data unavailable", "selected": [], "features": []}
-    if len(labels) != len(candidates) or not candidates:
+    try:
+        alpha = float(alpha)
+        l1_ratio = float(l1_ratio)
+        steps = int(steps)
+        learning_rate = float(learning_rate)
+    except (TypeError, ValueError, OverflowError):
+        return {"status": "Data unavailable", "selected": [], "features": []}
+    import math
+    if (not math.isfinite(alpha) or alpha < 0 or not 0 <= l1_ratio <= 1 or
+            steps <= 0 or not math.isfinite(learning_rate) or learning_rate <= 0):
         return {"status": "Data unavailable", "selected": [], "features": []}
     X, features = _design_matrix(candidates)
     if not X or not features:
         return {"status": "Data unavailable", "selected": [], "features": features}
-    y = [float(v) for v in labels]
+    y = labels
     weights = [0.0] * len(features)
     import math
     l1 = float(alpha) * float(l1_ratio)
