@@ -126,16 +126,6 @@ def main(argv=None):
         result=acquire_command(args.manifest,args.output,args.token,args.limit)
     elif args.command=="register":
         result=register_command(args.manifest,args.root,args.output)
-    elif args.command=="data-plan":
-        result=data_plan_command(args.output,args.healthy_samples,not args.no_gtex)
-    elif args.command=="1000g-manifest":
-        result=one_kg_manifest_command(args.output,args.samples,args.chromosomes)
-    elif args.command=="reference-acquire":
-        result=reference_acquire_command(args.manifest,args.output,args.limit,args.timeout)
-    elif args.command=="maf-to-vcf":
-        result=maf_to_vcf_command(args.input,args.output)
-    elif args.command=="1000g-select":
-        result=one_kg_select_command(args.panel,args.output,args.samples)
     else:
         result=report_command(args.output)
     print(json.dumps(result,indent=2,default=str)); return 0
