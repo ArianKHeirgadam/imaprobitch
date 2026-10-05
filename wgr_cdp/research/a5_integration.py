@@ -69,6 +69,16 @@ def _base_evidence(row, matrix=None):
         "blood_background_safety": row.get("blood_background_safety", "Data unavailable"),
         "early_stage_score": row.get("early_stage_score", "Data unavailable"),
         "specificity_score": row.get("specificity_score", "Data unavailable"),
+        # Preserve raw cohort/cfDNA measurements so C-12 can compute
+        # recurrence and liquid-biopsy suitability from the evidence row.
+        "case_frequency": row.get("case_frequency"),
+        "case_carriers": row.get("case_carriers"),
+        "case_n": row.get("case_n"),
+        "clonality": row.get("clonality"),
+        "allele_fraction": row.get("allele_fraction"),
+        "mappability": row.get("mappability"),
+        "prior_cfdna_evidence": row.get("prior_cfdna_evidence"),
+        "alteration_type_support": row.get("alteration_type_support"),
         "literature": row.get("literature") or {},
         "constraints": row.get("constraints") or {"assay_ok": True, "fpr_ok": True},
     }
