@@ -255,15 +255,23 @@ def analyze_cnv_segments(
     )
 
 
+    _write_csv(
+        output/"cnv_region_comparison.csv",
+        region_comparison,
+        list(region_comparison[0].keys()) if region_comparison else []
+    )
+
+    if gene_comparison:
+        _write_csv(
+            output/"cnv_gene_comparison.csv",
+            gene_comparison,
+            list(gene_comparison[0].keys())
+        )
+
     significant=filter_significant(
         region_comparison,
         alpha=alpha
     )
-    if not significant:
-        significant = [
-            row for row in region_comparison
-            if row.get("effect_size") not in (None, 0)
-        ]
 
 
     candidates=[]
