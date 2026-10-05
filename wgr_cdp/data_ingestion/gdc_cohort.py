@@ -7,6 +7,7 @@ from filenames. Cohort eligibility is based on explicit GDC sample metadata.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -15,18 +16,30 @@ from .gdc import GDC_API, GDCIntakeError
 
 def _post_json(endpoint: str, payload: dict, timeout: int = 30) -> dict:
     body = json.dumps(payload).encode("utf-8")
-    request = Request(
-        f"{GDC_API}/{endpoint.lstrip('/')}",
-        data=body,
-        headers={"Accept": "application/json", "Content-Type": "application/json",
-                 "User-Agent": "WGR-CDP/1.4"},
-        method="POST",
-    )
-    try:
-        with urlopen(request, timeout=timeout) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except Exception as exc:
-        raise GDCIntakeError(f"GDC cohort query failed: {type(exc).__name__}") from exc
+    url = f"{GDC_API}/{endpoint.lstrip('/')}"
+    last_exc = None
+    for attempt in range(3):
+        request = Request(
+            url,
+            data=body,
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Connection": "close",
+                "User-Agent": "WGR-CDP/1.4",
+            },
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except Exception as exc:
+            last_exc = exc
+            if attempt < 2:
+                time.sleep(1.0 * (attempt + 1))
+    raise GDCIntakeError(
+        f"GDC cohort query failed after 3 attempts: {type(last_exc).__name__}"
+    ) from last_exc
 
 
 def query_cases(project_id: str, *, size: int = 5000, timeout: int = 30) -> list[dict]:
