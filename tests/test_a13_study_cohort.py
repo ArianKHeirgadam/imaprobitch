@@ -110,3 +110,31 @@ def test_select_variant_files_accepts_copy_number_variation_category():
         strategy="WGS", case_ids=["C1"]
     )
     assert [x["file_id"] for x in out] == ["cnv1"]
+
+
+def test_gdc_get_query_encodes_nested_filters(monkeypatch):
+    from wgr_cdp.data_ingestion import gdc_cohort as g
+    calls = {"n": 0, "url": ""}
+    class FakeResponse:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return b'{"data":{"hits":[],"pagination":{"total":0}}}'
+    def fake_open(request, timeout=30):
+        calls["n"] += 1
+        calls["url"] = request.full_url
+        return FakeResponse()
+    monkeypatch.setattr(g, "urlopen", fake_open)
+    result = g._get_json(
+        "cases",
+        {
+            "filters": {"op": "in", "content": {"field": "project.project_id", "value": ["TCGA-STAD"]}},
+            "fields": "case_id,submitter_id",
+            "format": "JSON",
+            "size": 10,
+            "from": 0,
+        },
+    )
+    assert calls["n"] == 1
+    assert "filters=" in calls["url"]
+    assert "TCGA-STAD" in calls["url"]
+    assert result["data"]["pagination"]["total"] == 0
