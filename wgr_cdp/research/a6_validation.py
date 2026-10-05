@@ -187,7 +187,7 @@ def evaluate_selected_candidates(selected, validation_candidates):
     }
 
 def run_a6(candidates, weights, constraints=None, matrix=None, k=15,
-           n_bootstrap=200, validation_candidates=None, seed=42):
+           n_bootstrap=200, validation_candidates=None, seed=42, labels=None):
     """Complete A6 evaluation record."""
     constraints=dict(constraints or {})
     ranking=rank_candidates(candidates,weights,constraints)
@@ -202,6 +202,10 @@ def run_a6(candidates, weights, constraints=None, matrix=None, k=15,
         "ablations":ablations,
         "bootstrap_stability":stability,
         "holdout_validation":holdout,
+        "baseline_models": {
+            "logistic": logistic_baseline(candidates, labels=labels, k=k),
+            "elastic_net": elastic_net_coordinate_descent(candidates, labels=labels, k=k),
+        },
         "selected":[_id(x) for x in ranking["ranked"][:k]],
     }
 
