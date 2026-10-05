@@ -50,6 +50,8 @@ def estimate_lod(depth=300,target_power=.95,lower=1e-5,upper=.5,**kwargs):
     return hi
 
 def patient_candidate_matrix(patients, candidates, candidate_features, assay=None):
+    """Build D[p,c] while preserving unavailable assay evidence explicitly."""
+
     """Build D[p,c] using patient-specific candidate evidence when supplied."""
     out = {}
     for patient in patients:
@@ -60,8 +62,15 @@ def patient_candidate_matrix(patients, candidates, candidate_features, assay=Non
             if raw is None:
                 raw = candidate_features.get(candidate)
             s = dict(raw or {})
+            if assay and isinstance(assay, dict):
+                merged = dict(assay)
+                merged.update(s)
+                s = merged
             if s.get("present") is False:
                 out[patient][candidate] = 0.0
+                continue
+            if s.get("tumor_fraction") in (None, "") or s.get("depth") in (None, ""):
+                out[patient][candidate] = "Data unavailable"
                 continue
             # Missing assay inputs are not evidence for a default tumor fraction
             # or sequencing depth. Preserve the scientific contract instead of
