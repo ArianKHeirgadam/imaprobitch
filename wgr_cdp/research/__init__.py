@@ -2,7 +2,7 @@
 from .cfdna import detectability_probability, power_curve, lod_curve, detectability_grid, estimate_lod, patient_candidate_matrix
 from .multires_scanner import exact_scan, coarse_to_fine_scan
 from .panel_optimizer import panel_coverage, greedy_panel, ilp_panel, alpha_budget
-from .validation import AnalysisState, LeakageGuard, bootstrap_selection, cohort_holdout_guard
+from .validation import (AnalysisState, LeakageGuard, bootstrap_selection, cohort_holdout_guard, patient_level_split, stratified_patient_level_split, audit_three_way_split, build_split_manifest, write_split_manifest, evaluate_binary_predictions, fit_binary_threshold, evaluate_with_frozen_threshold, run_c04_evaluation)
 from .statistics import benjamini_hochberg, fisher_exact_2x2, per_feature_alpha, cohen_h
 from .cfdna_score_engine import detectability_score
 from .cfdna_simulator import simulate_detectability, validate_analytical_against_simulation
@@ -17,7 +17,7 @@ __all__ = [
     "detectability_probability","power_curve","lod_curve","detectability_grid","estimate_lod","patient_candidate_matrix",
     "exact_scan","coarse_to_fine_scan","panel_coverage","greedy_panel","ilp_panel",
     "alpha_budget","AnalysisState","LeakageGuard","bootstrap_selection",
-    "cohort_holdout_guard","benjamini_hochberg","fisher_exact_2x2",
+    "cohort_holdout_guard","patient_level_split","stratified_patient_level_split","audit_three_way_split","build_split_manifest","write_split_manifest","evaluate_binary_predictions","fit_binary_threshold","evaluate_with_frozen_threshold","run_c04_evaluation","benjamini_hochberg","fisher_exact_2x2",
     "per_feature_alpha","cohen_h","detectability_score","simulate_detectability","validate_analytical_against_simulation",
     "normalize_evidence","apply_constraints","transparent_weighted_score","rank_candidates",
     "build_queries","search_pubmed","literature_record","summarize_whitespace",
