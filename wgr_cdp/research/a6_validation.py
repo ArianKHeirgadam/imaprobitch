@@ -197,6 +197,8 @@ def run_a6(candidates, weights, constraints=None, matrix=None, k=15,
     ranking=rank_candidates(candidates,weights,constraints)
     baseline=compare_baseline(candidates,ranking["ranked"],matrix,k)
     ablations=run_ablations(candidates,weights,constraints,matrix,k)
+    from .ablation import compare as compare_ablations
+    ablation_comparison=compare_ablations({row["ablation"]: row for row in ablations})
     stability=bootstrap_rank_stability(candidates,weights,constraints,n_bootstrap,k,seed)
     holdout=evaluate_selected_candidates([_id(x) for x in ranking["ranked"][:k]], validation_candidates)
     return {
@@ -204,6 +206,7 @@ def run_a6(candidates, weights, constraints=None, matrix=None, k=15,
         "k":int(k),"constraints":constraints,
         "baseline_comparison":baseline,
         "ablations":ablations,
+        "ablation_comparison":ablation_comparison,
         "bootstrap_stability":stability,
         "holdout_validation":holdout,
         "baseline_models": {
