@@ -127,3 +127,27 @@ A passing software test suite establishes implementation behavior, not biologica
 Overall A0–A12 software status: GO for implementation.
 
 Scientific-result status: conditional on real data and independent validation.
+
+
+## C-10: literature evidence provenance
+
+C-10 completes the literature-whitespace contract as an additive layer over the
+existing A5 evidence system.
+
+- Candidate/feature, gene and region identifiers are combined into an explicit
+  search identity without inventing aliases.
+- Three declared intents are generated: core cfDNA, diagnostic context, and
+  validation context.
+- Every intent includes gastric-cancer and cfDNA/ctDNA/plasma/liquid-biopsy
+  context.
+- PubMed and Europe PMC are queried independently when live search is enabled;
+  source counts are never merged.
+- Each record preserves candidate identity, intent, source, exact query, date,
+  result count, retrieval status and manual-review status.
+- C-10 emits c10.literature.v1 JSON/CSV artifacts and retains the A5
+  literature_whitespace.json compatibility artifact.
+- Search counts remain retrieval metadata. Novelty, validation gap and
+  diagnostic utility remain Data unavailable until explicit manual review.
+
+Status: implementation complete; empirical literature conclusions remain
+dependent on the declared search, retrieved records and manual review.
