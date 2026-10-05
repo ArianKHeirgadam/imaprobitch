@@ -1,4 +1,4 @@
-# WGR-CDP Final Scientific & Reproducibility Audit — A0 to A12
+# WGR-CDP Final Scientific & Reproducibility Audit — A0 to A12 + C-11
 
 ## Scope
 
@@ -151,3 +151,19 @@ existing A5 evidence system.
 
 Status: implementation complete; empirical literature conclusions remain
 dependent on the declared search, retrieved records and manual review.
+
+
+## C-11: end-to-end integration gate
+
+C-11 audits the concrete CLI research path after the A0-A8/C-09/C-10 layers.
+It requires the generated base-analysis, A5, A6, A7, A8, C-09 and C-10 artifact
+groups to be present and non-empty, then checks cross-stage contracts.
+
+Status: implementation complete; closure is conditional on the authoritative
+local full-suite regression and a representative real run producing a C-11 PASS.
+
+The C-11 manifest is written before A9, so the final A9 SHA-256 artifact
+inventory includes C-11 outputs.
+
+Scientific-result status remains conditional on real datasets and independent
+validation.
