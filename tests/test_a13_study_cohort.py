@@ -21,3 +21,17 @@ def test_select_open_snv_files():
     ]
     out=select_open_variant_files(rows)
     assert [x["file_id"] for x in out] == ["b"]
+
+def test_select_variant_files_can_target_wgs_controlled_case():
+    rows = [{
+        "file_id": "wgs1", "access": "controlled", "data_type": "Raw Simple Somatic Mutation",
+        "data_format": "VCF", "experimental_strategy": "WGS",
+        "cases": [{"case_id": "C1"}],
+    }, {
+        "file_id": "wgs2", "access": "controlled", "data_type": "Raw Simple Somatic Mutation",
+        "data_format": "VCF", "experimental_strategy": "WGS",
+        "cases": [{"case_id": "C2"}],
+    }]
+    from wgr_cdp.data_ingestion.study_cohort import select_variant_files
+    out = select_variant_files(rows, access="controlled", strategy="WGS", case_ids=["C1"])
+    assert [x["file_id"] for x in out] == ["wgs1"]
