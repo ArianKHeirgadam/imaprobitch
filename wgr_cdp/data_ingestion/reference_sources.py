@@ -49,6 +49,14 @@ SOURCE_PROFILES = {
         "permit; open masked somatic MAF is an explicit fallback and must remain "
         "labelled as MAF-derived rather than raw WGS VCF.",
     ),
+    "tcga_matched_normal": SourceProfile(
+        "TCGA-STAD matched normal", "Paired non-tumor comparator", "controlled",
+        "Data unavailable until file inspection", "germline/somatic-normal VCF",
+        "https://portal.gdc.cancer.gov/projects/TCGA-STAD",
+        "Matched non-tumor samples belong to the same cancer cases. They are useful "
+        "for paired somatic-vs-normal analyses but are not an independent healthy "
+        "population and should not be described as such.",
+    ),
     "1000g_30x": SourceProfile(
         "1000 Genomes 30x", "Population/germline reference cohort", "public",
         "GRCh38", "multi-sample VCF.gz",
@@ -87,6 +95,7 @@ def build_data_plan(
         "status": "Available",
         "primary_cancer": asdict(profiles["tcga_stad"]),
         "healthy_reference": asdict(profiles[healthy_reference]),
+        "paired_normal_reference": asdict(profiles["tcga_matched_normal"]),
         "tissue_reference": asdict(profiles["gtex_stomach"]) if include_gtex else None,
         "healthy_target_samples": int(healthy_target_samples),
         "chromosomes": list(chromosomes),
@@ -95,6 +104,10 @@ def build_data_plan(
             "Healthy/reference": (
                 "1000 Genomes population/germline reference; not automatically "
                 "declared disease-matched healthy control"
+            ),
+            "TCGA matched normal": (
+                "paired non-tumor comparator for the same cancer cases; not an "
+                "independent healthy population"
             ),
             "GTEx": "non-diseased stomach tissue reference",
         },
