@@ -214,14 +214,11 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         json.dumps(result["a6"]["bootstrap_stability"], indent=2, default=str),
         encoding="utf-8"
     )
-    (Path(output) / "a6_ablation.csv").write_text(
-        "ablation,k,coverage,ineligible,unscored\n"
-        + "".join(
-            f'{row.get("ablation","")},{row.get("k","")},{row.get("coverage","")},{row.get("ineligible","")},{row.get("unscored","")}\n'
-            for row in result["a6"]["ablations"]
-        ),
-        encoding="utf-8"
-    )
+    with (Path(output) / "a6_ablation.csv").open("w", encoding="utf-8", newline="") as handle:
+        fields = ["ablation", "k", "coverage", "ineligible", "unscored"]
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(result["a6"]["ablations"])
 
     from wgr_cdp.research.a7_final_panel import write_final_panel, append_a7_to_report
     candidate_layers = {
