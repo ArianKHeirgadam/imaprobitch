@@ -1,4 +1,4 @@
-from wgr_cdp.research.cfdna import detectability_probability, estimate_lod, patient_candidate_matrix
+from wgr_cdp.research.cfdna import detectability_probability, estimate_lod, lod_curve, detectability_grid, patient_candidate_matrix
 from wgr_cdp.research.multires_scanner import exact_scan, coarse_to_fine_scan
 from wgr_cdp.research.panel_optimizer import panel_coverage, greedy_panel, ilp_panel, alpha_budget
 from wgr_cdp.research.statistics import benjamini_hochberg, cohen_h
@@ -23,6 +23,24 @@ def test_patient_matrix():
         ["P1"], ["c1"], {"c1": {"tumor_fraction": .05, "depth": 300}}
     )
     assert 0 <= matrix["P1"]["c1"] <= 1
+
+def test_cfdna_lod_curve_and_grid():
+    curve = lod_curve(depths=(100, 300))
+    assert [row["depth"] for row in curve] == [100, 300]
+    assert all(row["target_power"] == .95 for row in curve)
+    assert all(row["lod_tumor_fraction"] is not None for row in curve)
+    grid = detectability_grid(tumor_fractions=(.01, .05), depths=(100, 300))
+    assert len(grid) == 4
+    assert grid[0]["depth"] == 100
+
+def test_patient_matrix_does_not_fabricate_missing_assay_inputs():
+    matrix = patient_candidate_matrix(
+        ["P1", "P2"], ["c1"],
+        {"P1": {"c1": {"depth": 300}},
+         "P2": {"c1": {"tumor_fraction": .05}}},
+    )
+    assert matrix["P1"]["c1"] == "Data unavailable"
+    assert matrix["P2"]["c1"] == "Data unavailable"
 
 
 def test_scanner():
