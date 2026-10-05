@@ -70,6 +70,8 @@ def test_complete_a6_record():
     assert len(result["ablations"])==8
     assert result["bootstrap_stability"]["n_bootstrap"]==25
     assert len(result["selected"])==2
+    assert result["baseline_models"]["logistic"]["status"] == "Data unavailable"
+    assert result["baseline_models"]["elastic_net"]["status"] == "Data unavailable"
 
 
 def test_logistic_and_elastic_net_baselines_require_labels():
@@ -113,3 +115,9 @@ def test_baseline_parameters_are_validated():
     labels = [1, 1, 0]
     assert logistic_baseline(rows, labels=labels, learning_rate=0)["status"] == "Data unavailable"
     assert elastic_net_coordinate_descent(rows, labels=labels, l1_ratio=2)["status"] == "Data unavailable"
+
+
+def test_complete_a6_record_integrates_labelled_baselines():
+    result = run_a6(candidates(), WEIGHTS, k=2, n_bootstrap=5, labels=[1, 1, 0])
+    assert result["baseline_models"]["logistic"]["status"] == "Available"
+    assert result["baseline_models"]["elastic_net"]["status"] == "Available"
