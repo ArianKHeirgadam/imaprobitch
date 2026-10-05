@@ -458,3 +458,24 @@ def reference_acquire_command(manifest_path, output_dir, limit=None, timeout=60)
 def maf_to_vcf_command(input_path, output_dir):
     from wgr_cdp.data_ingestion.maf import convert_maf_to_vcf
     return convert_maf_to_vcf(input_path, output_dir)
+
+def one_kg_select_command(panel_path, output, samples=250):
+    from wgr_cdp.data_ingestion.reference_sources import (
+        read_1000g_panel, select_1000g_samples, write_sample_list,
+    )
+    panel = read_1000g_panel(panel_path)
+    selected = select_1000g_samples(panel, int(samples))
+    path = write_sample_list(output, selected)
+    result = {
+        "schema_version": "A12-1KG-SAMPLE-1",
+        "status": "Available" if selected else "Data unavailable",
+        "selected_count": len(selected),
+        "strategy": "balanced_superpopulation",
+        "sample_ids": [row["sample"] for row in selected],
+        "superpopulation_counts": {
+            label: sum(row.get("super_population") == label for row in selected)
+            for label in sorted({row.get("super_population") for row in selected})
+        },
+        "output": str(path),
+    }
+    return result
