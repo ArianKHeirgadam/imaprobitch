@@ -170,6 +170,14 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         fields=["ablation","k","coverage","ineligible","unscored"]
         w=csv.DictWriter(h,fieldnames=fields); w.writeheader(); w.writerows(result["a6"]["ablations"])
 
+    from wgr_cdp.research.c11_integration import write_c11_artifacts, append_c11_to_report
+    result["c11"] = write_c11_artifacts(
+        output,
+        config=run_config,
+        run_id=run_record["run_id"],
+    )
+    append_c11_to_report(output, result["c11"])
+
     # A9 is the final provenance layer: hash the completed run artifacts after
     # A8 has finished. The manifest excludes itself to remain self-consistent.
     from wgr_cdp.release.reproducibility import write_reproducibility_manifest
