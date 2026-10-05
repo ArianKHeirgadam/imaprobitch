@@ -33,20 +33,32 @@ def _first(row, names):
     return None
 
 def read_maf(path):
+    required = {
+        "Chromosome", "Start_Position", "Reference_Allele",
+        "Tumor_Seq_Allele2", "Tumor_Sample_Barcode",
+    }
     with _open(path) as handle:
-        reader = csv.DictReader(
-            (line for line in handle if not line.startswith("##")),
-            delimiter="	",
-        )
-        if not reader.fieldnames:
-            raise ValueError("MAF file has no header")
-        required = {
-            "Chromosome", "Start_Position", "Reference_Allele",
-            "Tumor_Seq_Allele2", "Tumor_Sample_Barcode",
-        }
-        missing = sorted(required - set(reader.fieldnames))
-        if missing:
-            raise ValueError("MAF missing required columns: " + ", ".join(missing))
+        header = None
+        data_lines = []
+        for raw in handle:
+            line = raw.rstrip("\r\n")
+            if not line.strip():
+                continue
+            fields = line.split("\t")
+            # GDC/TCGA MAF files may have metadata/comment lines before the
+            # tab-delimited header. Detect the real header by required fields.
+            if header is None:
+                if required.issubset(set(fields)):
+                    header = fields
+                    data_lines.append(raw)
+                continue
+            # Ignore comment/metadata lines that occur after the header.
+            if line.startswith("#"):
+                continue
+            data_lines.append(raw)
+        if header is None:
+            raise ValueError("MAF file has no detectable header")
+        reader = csv.DictReader(data_lines, fieldnames=header, delimiter="\t")
         return list(reader)
 
 def convert_maf_to_vcf(input_path, output_dir, *, prefix="tcga_stad"):
