@@ -307,6 +307,18 @@ def analyze_cnv_segments(
 
 
     _write_csv(
+        output/"cnv_candidates.csv",
+        candidates,
+        list(candidates[0].keys()) if candidates else [
+            "feature", "event_type", "case_carriers", "control_carriers",
+            "case_n", "control_n", "case_observed", "control_observed",
+            "case_frequency", "control_frequency", "frequency_difference",
+            "effect_size", "direction", "case_mean_log2", "control_mean_log2",
+            "p_value", "q_value", "candidate_type", "candidate_score", "candidate_rank"
+        ]
+    )
+
+    _write_csv(
         output/"cnv_gene_events.csv",
         gene_rows,
         list(gene_rows[0].keys())
