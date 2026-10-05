@@ -86,3 +86,30 @@ def test_logistic_and_elastic_net_baselines_are_executable_with_labels():
     assert elastic["status"] == "Available"
     assert len(logistic["selected"]) == 2
     assert len(elastic["selected"]) == 2
+
+
+def test_baselines_do_not_treat_missing_features_as_zero():
+    rows = candidates()
+    rows[0]["missing_feature"] = None
+    rows[1]["missing_feature"] = "Data unavailable"
+    rows[2]["missing_feature"] = 1.0
+    labels = [1, 1, 0]
+    logistic = logistic_baseline(rows, labels=labels, k=2)
+    elastic = elastic_net_coordinate_descent(rows, labels=labels, k=2)
+    assert logistic["status"] == "Available"
+    assert elastic["status"] == "Available"
+    assert "missing_feature" in logistic["features"]
+    assert "missing_feature" in elastic["features"]
+
+
+def test_baselines_reject_invalid_or_one_class_labels():
+    rows = candidates()
+    assert logistic_baseline(rows, labels=[1, 1, 2])["status"] == "Data unavailable"
+    assert elastic_net_coordinate_descent(rows, labels=[0, 0, 0])["status"] == "Data unavailable"
+
+
+def test_baseline_parameters_are_validated():
+    rows = candidates()
+    labels = [1, 1, 0]
+    assert logistic_baseline(rows, labels=labels, learning_rate=0)["status"] == "Data unavailable"
+    assert elastic_net_coordinate_descent(rows, labels=labels, l1_ratio=2)["status"] == "Data unavailable"
