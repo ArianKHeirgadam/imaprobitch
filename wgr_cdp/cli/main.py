@@ -126,7 +126,7 @@ def main(argv=None):
     elif args.command=="1000g-subset":
         result=one_kg_subset_command(args.input,args.samples,args.output)
     elif args.command=="study-cohort":
-        result=study_cohort_command(args.project,args.output,args.access,args.timeout)
+        result=study_cohort_command(args.project,args.output,args.access,args.timeout,args.strategy)
     elif args.command=="validate":
         result=validate_command()
     elif args.command=="release":
