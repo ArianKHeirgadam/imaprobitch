@@ -27,14 +27,17 @@ def test_unavailable_evidence_is_not_zero():
 def test_literature_query_generation():
     queries=build_queries("TP53",aliases=("P53",)); assert len(queries)==3
     assert all("gastric cancer" in q["query"] for q in queries)
+    assert all(("cfDNA" in q["query"] or "ctDNA" in q["query"]) for q in queries)
 
 def test_literature_no_search_does_not_invent_counts():
     records=literature_record("TP53",search=False)
+    assert len(records) == 6
+    assert {r["source"] for r in records} == {"PubMed", "Europe PMC"}
     assert records and all(r["result_count"]=="Data unavailable" for r in records)
 
 def test_literature_summary():
     summary=summarize_whitespace([{"candidate":"A","status":"Available","result_count":10},{"candidate":"A","status":"Available","result_count":4},{"candidate":"B","status":"Not searched","result_count":"Data unavailable"}])
-    assert summary["A"]["result_counts"]==[10,4] and summary["B"]["status"]=="Data unavailable"
+    assert summary["A"]["result_counts_by_source"][""]==[10,4] and summary["B"]["status"]=="Data unavailable"
 
 def test_stage_stratification():
     out=stage_candidate_rates([{"candidate":"A","stage":"I","detected":True},{"candidate":"A","stage":"II","detected":False},{"candidate":"A","stage":"III","detected":True},{"candidate":"A","stage":"IV","detected":True}])
