@@ -118,3 +118,39 @@ def test_duplicate_patient_predictions_do_not_get_double_counted():
     result = evaluate_binary_predictions(rows)
     assert result["status"] == "Data unavailable"
     assert "duplicate_patient_predictions" in result["reason"]
+
+
+from wgr_cdp.research.validation import run_c04_evaluation
+
+
+def test_c04_evaluation_rejects_cross_partition_patient_leakage():
+    result = run_c04_evaluation(
+        [{"patient_id": "P1", "label": "positive", "score": .9}],
+        [{"patient_id": "P1", "label": "positive", "score": .8}],
+        [{"patient_id": "P2", "label": "negative", "score": .1}],
+    )
+    assert result["status"] == "FAIL"
+    assert result["leakage_free"] is False
+    assert result["overlaps"]["discovery__validation"] == ["P1"]
+
+
+def test_c04_evaluation_freezes_discovery_threshold():
+    discovery = [
+        {"patient_id": "D1", "label": "positive", "score": .9},
+        {"patient_id": "D2", "label": "negative", "score": .1},
+        {"patient_id": "D3", "label": "positive", "score": .8},
+        {"patient_id": "D4", "label": "negative", "score": .2},
+    ]
+    validation = [
+        {"patient_id": "V1", "label": "positive", "score": .7},
+        {"patient_id": "V2", "label": "negative", "score": .6},
+    ]
+    test = [
+        {"patient_id": "T1", "label": "positive", "score": .75},
+        {"patient_id": "T2", "label": "negative", "score": .05},
+    ]
+    result = run_c04_evaluation(discovery, validation, test)
+    assert result["status"] == "Available"
+    assert result["threshold_fit"]["status"] == "Available"
+    assert result["validation"]["threshold"] == result["threshold_fit"]["threshold"]
+    assert result["test"]["threshold"] == result["threshold_fit"]["threshold"]
