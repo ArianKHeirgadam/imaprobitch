@@ -63,3 +63,50 @@ def test_gdc_post_retries_transient_tls(monkeypatch):
     result = g._post_json("cases", {"filters": {}})
     assert calls["n"] == 2
     assert result["data"]["pagination"]["total"] == 0
+
+
+def test_select_primary_variant_files_chooses_one_gatk_per_case():
+    from wgr_cdp.data_ingestion.study_cohort import select_primary_variant_files
+    rows = [
+        {
+            "file_id": "varscan", "file_name": "varscan.vcf.gz",
+            "access": "controlled", "data_type": "Annotated Somatic Mutation",
+            "data_format": "VCF", "experimental_strategy": "WGS",
+            "analysis": {"workflow_type": "VarScan2 Annotation"},
+            "cases": [{"case_id": "C1"}],
+        },
+        {
+            "file_id": "mutect", "file_name": "mutect.vcf.gz",
+            "access": "controlled", "data_type": "Annotated Somatic Mutation",
+            "data_format": "VCF", "experimental_strategy": "WGS",
+            "analysis": {"workflow_type": "GATK4 MuTect2 Annotation"},
+            "cases": [{"case_id": "C1"}],
+        },
+        {
+            "file_id": "mutectpair", "file_name": "mutectpair.vcf.gz",
+            "access": "controlled", "data_type": "Annotated Somatic Mutation",
+            "data_format": "VCF", "experimental_strategy": "WGS",
+            "analysis": {"workflow_type": "GATK4 MuTect2 Pair"},
+            "cases": [{"case_id": "C1"}],
+        },
+    ]
+    out = select_primary_variant_files(
+        rows, modality="SNV_INDEL", access="controlled",
+        strategy="WGS", case_ids=["C1"]
+    )
+    assert [x["file_id"] for x in out] == ["mutectpair"]
+
+def test_select_variant_files_accepts_copy_number_variation_category():
+    from wgr_cdp.data_ingestion.study_cohort import select_variant_files
+    rows = [{
+        "file_id": "cnv1", "access": "controlled",
+        "data_type": "Copy Number Segment",
+        "data_category": "Copy Number Variation",
+        "data_format": "TSV", "experimental_strategy": "WGS",
+        "cases": [{"case_id": "C1"}],
+    }]
+    out = select_variant_files(
+        rows, modality="CNV", access="controlled",
+        strategy="WGS", case_ids=["C1"]
+    )
+    assert [x["file_id"] for x in out] == ["cnv1"]
