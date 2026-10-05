@@ -66,6 +66,8 @@ def test_normalize_weights_rejects_nonfinite_and_negative():
         normalize_weights({"detectability": float("inf")})
     with pytest.raises(ValueError):
         normalize_weights({"detectability": -1})
+    with pytest.raises(ValueError, match="Unknown evidence weight field"):
+        normalize_weights({"unknown_component": 1.0})
 
 
 def test_weight_sensitivity_is_deterministic_and_auditable():
