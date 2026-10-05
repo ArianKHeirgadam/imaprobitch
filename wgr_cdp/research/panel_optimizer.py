@@ -1,17 +1,43 @@
 """Complementary patient-coverage panel optimization."""
 from itertools import combinations
+import math
 from .statistics import per_feature_alpha
 
-def panel_coverage(matrix,selected):
-    if not matrix: return 0.0
-    total=0.0
+def panel_coverage(matrix, selected):
+    """Coverage over patients with at least one observed selected feature.
+
+    Missing candidate observations are excluded from the denominator rather than
+    being interpreted as explicit non-detection. Explicit numeric zero remains
+    a valid observed non-detection.
+    """
+    if not matrix or not selected:
+        return 0.0
+    total = 0.0
+    observed_patients = 0
     for row in matrix.values():
-        miss=1.0
-        for c in selected: miss*=1-max(0,min(1,float(row.get(c,0))))
-        total+=1-miss
-    return total/len(matrix)
+        observed = []
+        for candidate in selected:
+            if candidate not in row or row.get(candidate) is None:
+                continue
+            try:
+                value = float(row[candidate])
+            except (TypeError, ValueError, OverflowError):
+                continue
+            if not math.isfinite(value):
+                continue
+            observed.append(max(0.0, min(1.0, value)))
+        if not observed:
+            continue
+        miss = 1.0
+        for value in observed:
+            miss *= 1.0 - value
+        total += 1.0 - miss
+        observed_patients += 1
+    return total / observed_patients if observed_patients else 0.0
 
 def greedy_panel(matrix,max_k=15,min_gain=.02):
+    max_k = min(15, max(0, int(max_k)))
+    min_gain = max(0.0, float(min_gain))
     candidates=sorted({c for row in matrix.values() for c in row}); selected=[]; current=0
     while candidates and len(selected)<max_k:
         best=max(candidates,key=lambda c:(panel_coverage(matrix,selected+[c]),c))
@@ -22,6 +48,8 @@ def greedy_panel(matrix,max_k=15,min_gain=.02):
 
 def ilp_panel(matrix,max_k=15,min_gain=0,max_candidates=22):
     """Exact binary optimization fallback; external ILP solvers may replace this for large spaces."""
+    max_k = min(15, max(0, int(max_k)))
+    min_gain = max(0.0, float(min_gain))
     candidates=sorted({c for row in matrix.values() for c in row})
     if len(candidates)>max_candidates:
         return {"method":"exact_0_1","status":"not_run","reason":"too_many_candidates","selected":[],"coverage":0.0,"k":0}
@@ -32,7 +60,12 @@ def ilp_panel(matrix,max_k=15,min_gain=0,max_candidates=22):
             if cov>best[0]+1e-12: best=(cov,combo)
     return {"method":"exact_0_1","status":"optimal","selected":list(best[1]),"coverage":best[0],"k":len(best[1])}
 
-def alpha_budget(fpr_target,k): return per_feature_alpha(fpr_target,k)
+def alpha_budget(fpr_target,k):
+    target = float(fpr_target)
+    if not math.isfinite(target) or not 0.0 < target <= 1.0:
+        raise ValueError("fpr_target must be a finite number in (0, 1]")
+    k = min(15, max(1, int(k)))
+    return per_feature_alpha(target, k)
 
 def coverage_curve(matrix, max_k=15, min_gain=0.02):
     """Return coverage and marginal gain for each panel size."""
