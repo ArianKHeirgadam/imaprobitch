@@ -20,8 +20,8 @@ ONE_KG_30X_BASE = (
 )
 ONE_KG_30X_VARIANT_TEMPLATE = (
     ONE_KG_30X_BASE
-    "20201028_CCDG_14151_B01_GRM_WGS_2020-08-05_chr{chrom}."
-    "recalibrated_variants.vcf.gz"
+    + "20201028_CCDG_14151_B01_GRM_WGS_2020-08-05_chr{chrom}."
+    + "recalibrated_variants.vcf.gz"
 )
 ONE_KG_SAMPLE_PANEL = (
     "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/"
