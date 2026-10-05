@@ -67,6 +67,8 @@ def test_complete_a6_record():
     result=run_a6(candidates(),WEIGHTS,matrix=matrix,k=2,n_bootstrap=25)
     assert result["status"]=="Available"
     assert "baseline_comparison" in result
+    assert "ablation_comparison" in result
+    assert result["ablation_comparison"]["status"] == "Available"
     assert len(result["ablations"])==8
     assert result["bootstrap_stability"]["n_bootstrap"]==25
     assert len(result["selected"])==2
