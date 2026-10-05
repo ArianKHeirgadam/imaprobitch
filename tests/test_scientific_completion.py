@@ -241,3 +241,19 @@ def test_pdf_phase_a4_cfdna_requirements():
     )
     assert matrix["P1"]["c1"] == 0.0
     assert matrix["P2"]["c1"] > 0
+
+
+def test_cfdna_score_missing_inputs_is_unavailable():
+    from wgr_cdp.research.cfdna_score_engine import detectability_score
+    result = detectability_score(None, depth=300)
+    assert result["detectability_score"] == "Data unavailable"
+    assert result["assay_feasibility"] == "Data unavailable"
+
+def test_patient_matrix_assay_defaults_are_not_fabricated():
+    from wgr_cdp.research.cfdna import patient_candidate_matrix
+    matrix = patient_candidate_matrix(
+        ["P1"], ["c1"],
+        {"c1": {"tumor_fraction": .05}},
+        assay={"depth": 300},
+    )
+    assert 0 < matrix["P1"]["c1"] <= 1
