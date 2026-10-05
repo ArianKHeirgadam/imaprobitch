@@ -1,6 +1,6 @@
 """WGR-CDP command line interface."""
 import argparse, json
-from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, one_kg_select_command, one_kg_subset_command, study_cohort_command, study_acquisition_manifest_command, open_study_acquisition_manifest_command
+from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, maf_batch_command, one_kg_select_command, one_kg_subset_command, study_cohort_command, study_acquisition_manifest_command, open_study_acquisition_manifest_command
 from wgr_cdp.release.reproducibility import release_readiness
 
 
@@ -62,6 +62,10 @@ def build_parser():
     mt=sub.add_parser("maf-to-vcf",help="convert a GDC masked somatic MAF into per-sample adapter VCFs")
     mt.add_argument("--input",required=True)
     mt.add_argument("--output",required=True)
+    mb=sub.add_parser("maf-batch",help="convert a directory of verified MAFs to VCF adapters and run structural QC")
+    mb.add_argument("--input",required=True)
+    mb.add_argument("--output",required=True)
+    mb.add_argument("--pattern",default="*.maf.gz")
     ss=sub.add_parser("1000g-select",help="select a deterministic population-balanced 1000G sample list")
     ss.add_argument("--panel",required=True)
     ss.add_argument("--output",required=True)
@@ -131,6 +135,8 @@ def main(argv=None):
         result=reference_acquire_command(args.manifest,args.output,args.limit,args.timeout)
     elif args.command=="maf-to-vcf":
         result=maf_to_vcf_command(args.input,args.output)
+    elif args.command=="maf-batch":
+        result=maf_batch_command(args.input,args.output,args.pattern)
     elif args.command=="1000g-select":
         result=one_kg_select_command(args.panel,args.output,args.samples)
     elif args.command=="1000g-subset":
