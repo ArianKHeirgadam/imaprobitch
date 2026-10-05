@@ -206,3 +206,10 @@ Current release: 1.1.0
 Project Vision
 
 WGR-CDP aims to bridge the gap between raw genome sequencing data and biological discovery by providing an integrated framework for genomic candidate identification.
+
+## C-12 final hardening
+
+The terminal layer adds explicit cfDNA-oriented prioritization, presence-based patient coverage,
+method-specific CNV statistics, cohort metadata/confounder auditing, typed external evidence
+hierarchy, frozen validation coverage, and evidence-strength confidence. Confidence is not a
+disease probability.
