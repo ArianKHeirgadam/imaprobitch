@@ -412,7 +412,13 @@ def one_kg_manifest_command(output, samples=250, chromosomes=None):
         "genome_build": "GRCh38",
         "target_samples": int(samples),
         "sample_panel_url": ONE_KG_SAMPLE_PANEL,
-        "files": one_kg_urls(chroms),
+        "files": one_kg_urls(chroms) + [{
+            "name": "integrated_call_samples_v3.20130502.ALL.panel",
+            "url": ONE_KG_SAMPLE_PANEL,
+            "format": "TXT",
+            "access": "public",
+            "source": "1000 Genomes 2504 panel",
+        }],
         "selection_note": (
             "Sample selection is deferred to a deterministic sample-list step; "
             "do not assume the first N VCF columns are population-balanced."
