@@ -407,3 +407,38 @@ def write_c09_artifacts(output_dir, candidates, **kwargs):
         **result,
         "artifacts": artifacts,
     }
+
+
+def append_c09_to_report(output_dir, result):
+    """Append a concise C-09 audit summary to the existing HTML report."""
+    report_path = Path(output_dir) / "report.html"
+    if not report_path.exists():
+        return False
+    report = report_path.read_text(encoding="utf-8")
+    weight_n = len(result.get("weight_sensitivity", []))
+    threshold_n = len(result.get("threshold_sensitivity", []))
+    k_n = len(result.get("k_sensitivity", {}).get("results", []))
+    missing_n = len(result.get("missingness_stress", {}).get("results", []))
+    weight_status = result.get("weight_robustness", {}).get("status", UNAVAILABLE)
+    threshold_status = result.get("threshold_robustness", {}).get("status", UNAVAILABLE)
+    section = (
+        "<hr><h2>Phase C-09 Robustness &amp; Sensitivity</h2>"
+        "<p>C-09 reports deterministic computational stress tests only; it does not "
+        "establish clinical validity or assay performance.</p>"
+        f"<ul><li>Weight scenarios: {weight_n}</li>"
+        f"<li>Weight robustness status: {weight_status}</li>"
+        f"<li>Threshold scenarios: {threshold_n}</li>"
+        f"<li>Threshold robustness status: {threshold_status}</li>"
+        f"<li>K-sensitivity points: {k_n}</li>"
+        f"<li>Missingness stress rates: {missing_n}</li></ul>"
+        "<p>Machine-readable C-09 artifacts: "
+        "<code>c09_robustness.json</code>, "
+        "<code>c09_weight_sensitivity.csv</code>, "
+        "<code>c09_threshold_sensitivity.csv</code>, "
+        "<code>c09_k_sensitivity.csv</code>, "
+        "<code>c09_missingness_stress.csv</code>.</p>"
+    )
+    marker = "</body>"
+    report = report.replace(marker, section + marker, 1) if marker in report else report + section
+    report_path.write_text(report, encoding="utf-8")
+    return True
