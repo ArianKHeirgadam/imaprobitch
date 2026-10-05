@@ -274,6 +274,19 @@ def analyze_cnv_segments(
     )
 
 
+    _write_csv(
+        output/"significant_cnvs.csv",
+        significant,
+        list(significant[0].keys()) if significant else [
+            "feature", "event_type", "case_carriers", "control_carriers",
+            "case_n", "control_n", "case_observed", "control_observed",
+            "case_frequency", "control_frequency", "frequency_difference",
+            "effect_size", "direction", "case_mean_log2", "control_mean_log2",
+            "p_value", "q_value"
+        ]
+    )
+
+
     candidates=[]
 
 
