@@ -191,7 +191,6 @@ def build_final_panel(
     presence_matrix=None,
 ):
     """Produce the final ranked candidate set and complementary coverage panel."""
-"
     weights = dict(weights or DEFAULT_WEIGHTS)
     constraints = dict(constraints or {"min_detectability": 0.0, "max_background": 1.0})
 
