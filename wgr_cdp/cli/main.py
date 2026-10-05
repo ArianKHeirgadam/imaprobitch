@@ -84,6 +84,7 @@ def build_parser():
     sc.add_argument("--output",required=True)
     sc.add_argument("--access",choices=["open","controlled"])
     sc.add_argument("--timeout",type=int,default=30)
+    sc.add_argument("--strategy",choices=["WGS","WXS"],default="WGS")
     report=sub.add_parser("report",help="locate an existing HTML report")
     report.add_argument("--output",required=True)
     return parser
