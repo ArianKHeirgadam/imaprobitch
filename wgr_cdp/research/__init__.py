@@ -1,5 +1,5 @@
 """Publication-oriented WGR-CDP scientific completion components."""
-from .cfdna import detectability_probability, power_curve, estimate_lod, patient_candidate_matrix
+from .cfdna import detectability_probability, power_curve, lod_curve, detectability_grid, estimate_lod, patient_candidate_matrix
 from .multires_scanner import exact_scan, coarse_to_fine_scan
 from .panel_optimizer import panel_coverage, greedy_panel, ilp_panel, alpha_budget
 from .validation import AnalysisState, LeakageGuard, bootstrap_selection, cohort_holdout_guard
