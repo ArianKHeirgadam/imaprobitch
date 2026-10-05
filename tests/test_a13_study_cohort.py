@@ -35,3 +35,14 @@ def test_select_variant_files_can_target_wgs_controlled_case():
     from wgr_cdp.data_ingestion.study_cohort import select_variant_files
     out = select_variant_files(rows, access="controlled", strategy="WGS", case_ids=["C1"])
     assert [x["file_id"] for x in out] == ["wgs1"]
+
+def test_classify_blood_normal_before_generic_normal_tissue_type():
+    from wgr_cdp.data_ingestion.study_cohort import _sample_class
+    assert _sample_class({
+        "sample_type": "Blood Derived Normal",
+        "tissue_type": "Normal",
+    }) == "NORMAL_BLOOD"
+    assert _sample_class({
+        "sample_type": "Solid Tissue Normal",
+        "tissue_type": "Normal",
+    }) == "NORMAL_SOLID"
