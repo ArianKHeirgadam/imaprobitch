@@ -5,3 +5,7 @@ Storage/
 *.user
 __pycache__/
 *.pyc
+venv/
+.venv/
+
+.pytest-temp/

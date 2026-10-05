@@ -1,0 +1,26 @@
+{
+  "clinical_or_biological_results": "Data unavailable",
+  "dbgap_accession_number": null,
+  "disease_type": [
+    "Adenomas and Adenocarcinomas",
+    "Cystic, Mucinous and Serous Neoplasms"
+  ],
+  "downloaded_locally": false,
+  "files": [],
+  "primary_site": [
+    "Stomach"
+  ],
+  "program": "TCGA",
+  "project_id": "TCGA-STAD",
+  "project_name": "Stomach Adenocarcinoma",
+  "released": true,
+  "schema_version": "A10-1",
+  "source": "GDC",
+  "state": "open",
+  "status": "Available",
+  "summary": {
+    "case_count": 443,
+    "file_count": 31604,
+    "file_size": 356170331187798
+  }
+}

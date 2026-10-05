@@ -12,6 +12,7 @@ from math import comb, isfinite
 from statistics import mean
 
 from .statistics import benjamini_hochberg, fisher_exact_2x2
+from .cfdna import detectability_probability
 
 RESOLUTIONS = (5_000_000, 1_000_000, 100_000, 10_000, 1_000, 1)
 LABELS = {5_000_000: "5Mb", 1_000_000: "1Mb", 100_000: "100kb", 10_000: "10kb", 1_000: "1kb", 1: "base"}
@@ -321,6 +322,37 @@ def _neighbor_regions(region, size, neighbor_k):
     return regions
 
 
+
+def _preliminary_detectability(sub):
+    """Estimate cfDNA detectability only when assay inputs are available."""
+    values = []
+    for row in sub:
+        tumor_fraction = _numeric(row, ("tumor_fraction",))
+        depth = _numeric(row, ("depth", "sequencing_depth"))
+        if tumor_fraction is None or depth is None:
+            continue
+        informative_sites = _numeric(row, ("informative_sites",))
+        copy_number = _numeric(row, ("copy_number", "copy_number_mt"))
+        error_rate = _numeric(row, ("error_rate", "assay_error_rate"))
+        blood_background = _numeric(row, ("blood_background",))
+        min_alt_reads = _numeric(row, ("min_alt_reads",))
+        try:
+            values.append(
+                detectability_probability(
+                    tumor_fraction,
+                    depth=int(depth),
+                    informative_sites=max(1, int(informative_sites or 1)),
+                    copy_number=float(copy_number if copy_number is not None else 2.0),
+                    error_rate=float(error_rate if error_rate is not None else 0.001),
+                    blood_background=float(blood_background if blood_background is not None else 0.0),
+                    min_alt_reads=max(1, int(min_alt_reads or 3)),
+                )
+            )
+        except (TypeError, ValueError, ZeroDivisionError):
+            continue
+    return sum(values) / len(values) if values else "Data unavailable"
+
+
 def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1, resolutions=RESOLUTIONS):
     """Hierarchical coarse-to-fine discovery followed by exact validation."""
     if neighbor_k < 0:
@@ -363,6 +395,13 @@ def coarse_to_fine_scan(rows, alpha=0.05, effect_threshold=0.10, neighbor_k=1, r
                 "feature_type": feature_type,
                 "effect_size": float(stats["effect_size"]),
                 "screening_effect": screening_effect,
+                "preliminary_detectability": _preliminary_detectability(
+                    [
+                        row for row in rows
+                        if _feature_type(row) == feature_type
+                        and _overlaps(row["region"], region)
+                    ]
+                ),
                 "p_value": float(stats["p_value"]),
                 "retained": retained_here,
                 "parent_region": parent_region,
