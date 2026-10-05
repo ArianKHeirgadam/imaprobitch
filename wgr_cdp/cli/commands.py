@@ -493,3 +493,22 @@ def one_kg_subset_command(input_path, sample_list, output_path):
         if line.strip()
     ]
     return subset_vcf_samples(input_path, output_path, ids)
+
+def study_cohort_command(project="TCGA-STAD", output="results/tcga_stad_study.json", access=None, timeout=30):
+    from wgr_cdp.data_ingestion.gdc_cohort import query_cases, query_variant_files, build_cohort_manifest
+    from wgr_cdp.data_ingestion.study_cohort import select_paired_tcga_cases, select_open_variant_files, write_study_selection
+    cases = query_cases(project, timeout=timeout)
+    files = query_variant_files(project, access=access, timeout=timeout)
+    cohort = build_cohort_manifest(project, cases, files)
+    pairing = select_paired_tcga_cases(cohort)
+    pairing["open_snv_files"] = select_open_variant_files(files, modality="SNV_INDEL", strategy="WXS")
+    pairing["open_cnv_files"] = select_open_variant_files(files, modality="CNV", strategy="")
+    pairing["project_case_count"] = cohort.get("case_count_observed", 0)
+    pairing["project_sample_count"] = cohort.get("sample_count", 0)
+    pairing["data_role_warning"] = (
+        "The selected normal samples are paired non-tumor comparators, not an "
+        "independent healthy population."
+    )
+    path = write_study_selection(output, pairing)
+    pairing["output"] = str(path)
+    return pairing
