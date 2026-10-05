@@ -21,7 +21,15 @@ def normalize_weights(weights):
             raise ValueError(f"Weight for {key!r} must be a finite non-negative number") from exc
         if not math.isfinite(number) or number < 0:
             raise ValueError(f"Weight for {key!r} must be a finite non-negative number")
-        normalized[str(key)] = number
+        normalized_key = str(key)
+        if normalized_key not in {
+            "biological_evidence", "statistical_strength", "detectability",
+            "blood_background_safety", "early_stage_score", "specificity_score",
+            "literature_novelty", "literature_validation_gap",
+            "literature_diagnostic_utility",
+        }:
+            raise ValueError(f"Unknown evidence weight field: {normalized_key!r}")
+        normalized[normalized_key] = number
     total = sum(normalized.values())
     if not math.isfinite(total) or total <= 0:
         raise ValueError("at least one weight must be positive")
