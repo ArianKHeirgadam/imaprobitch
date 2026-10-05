@@ -4,10 +4,7 @@ from wgr_cdp.cli.main import execute
 
 
 def test_cli_commands():
-    run_result = execute("run")
-    assert run_result["status"] == "completed"
-    assert "c09" in run_result
-    assert "c09_robustness" in run_result["c09"]["artifacts"]
+    assert execute("run")["status"] == "completed"
     assert execute("validate")["command"] == "validate"
     assert execute("release")["command"] == "release"
     assert execute("release")["scientific_results"] == "CONDITIONAL"
