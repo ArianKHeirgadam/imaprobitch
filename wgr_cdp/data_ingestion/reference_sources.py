@@ -129,7 +129,7 @@ def read_1000g_panel(path: str | Path) -> list[dict]:
     if not path.exists():
         raise ValueError(f"1000 Genomes sample panel does not exist: {path}")
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
-        rows = list(csv.DictReader(handle, delimiter="\\t"))
+        rows = list(csv.DictReader(handle, delimiter="\t"))
     if not rows:
         return []
     required = {"sample", "population", "super_population"}
