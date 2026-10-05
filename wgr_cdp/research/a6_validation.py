@@ -89,14 +89,17 @@ def compare_baseline(candidates, wgr_ranked, matrix=None, k=15):
 def _ablation_weights(base_weights, name):
     weights=dict(base_weights)
     remove={
-        "without_detectability":"detectability",
+        "without_detectability":("detectability","cfdna_suitability"),
         "without_blood_background":"blood_background_safety",
         "without_early_stage":"early_stage_score",
         "without_specificity":"specificity_score",
         "single_layer":None,
     }.get(name,"__none__")
-    if remove:
-        weights.pop(remove,None)
+    if isinstance(remove, tuple):
+        for key in remove:
+            weights.pop(key, None)
+    elif remove:
+        weights.pop(remove, None)
     elif name=="single_layer":
         weights={k:1.0 for k in ("statistical_strength",)}
     elif name=="without_complementary_optimization":
