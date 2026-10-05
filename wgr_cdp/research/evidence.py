@@ -13,6 +13,10 @@ EVIDENCE_FIELDS = (
     "literature_novelty",
     "literature_validation_gap",
     "literature_diagnostic_utility",
+    "recurrence_prevalence",
+    "cfdna_suitability",
+    "patient_coverage",
+    "external_cancer_evidence",
 )
 _UNAVAILABLE = "Data unavailable"
 
