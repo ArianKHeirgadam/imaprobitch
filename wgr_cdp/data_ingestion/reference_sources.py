@@ -123,6 +123,84 @@ def one_kg_urls(chromosomes=None):
         "source": "1000 Genomes 30x",
     } for chrom in chromosomes]
 
+def read_1000g_panel(path: str | Path) -> list[dict]:
+    import csv
+    path = Path(path)
+    if not path.exists():
+        raise ValueError(f"1000 Genomes sample panel does not exist: {path}")
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle, delimiter="\\t"))
+    if not rows:
+        return []
+    required = {"sample", "population", "super_population"}
+    missing = required - set(rows[0])
+    if missing:
+        raise ValueError("1000 Genomes panel missing columns: " + ", ".join(sorted(missing)))
+    return rows
+
+def select_1000g_samples(panel_rows, n=250, strategy="balanced_superpopulation"):
+    if n < 1:
+        raise ValueError("n must be positive")
+    rows = [dict(r) for r in panel_rows if r.get("sample")]
+    if n >= len(rows):
+        return rows
+    if strategy != "balanced_superpopulation":
+        return rows[:n]
+    groups = {}
+    for row in rows:
+        groups.setdefault(str(row.get("super_population") or UNAVAILABLE), []).append(row)
+    labels = sorted(groups)
+    quota, remainder = divmod(n, len(labels))
+    selected = []
+    for index, label in enumerate(labels):
+        take = quota + (1 if index < remainder else 0)
+        selected.extend(groups[label][:take])
+    return selected[:n]
+
+def write_sample_list(path: str | Path, rows: list[dict]) -> Path:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "\n".join(str(row["sample"]) for row in rows if row.get("sample")) + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+def subset_vcf_samples(input_path: str | Path, output_path: str | Path, sample_ids):
+    import gzip
+    input_path = Path(input_path)
+    output_path = Path(output_path)
+    wanted = set(str(x) for x in sample_ids)
+    if not wanted:
+        raise ValueError("sample_ids cannot be empty")
+    opener_in = gzip.open if input_path.suffix == ".gz" else open
+    opener_out = gzip.open if output_path.suffix == ".gz" else open
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    found = set()
+    with opener_in(input_path, "rt", encoding="utf-8") as src, opener_out(output_path, "wt", encoding="utf-8") as dst:
+        for raw in src:
+            if raw.startswith("##"):
+                dst.write(raw)
+                continue
+            if raw.startswith("#CHROM"):
+                fields = raw.rstrip("\r\n").split("\t")
+                base = fields[:9]
+                sample_names = fields[9:]
+                indices = [i for i, name in enumerate(sample_names, start=9) if name in wanted]
+                found = {sample_names[i - 9] for i in indices}
+                dst.write("\t".join(base + [fields[i] for i in indices]) + "\n")
+                continue
+            fields = raw.rstrip("\r\n").split("\t")
+            if len(fields) >= 9:
+                format_and_samples = [fields[i] for i in indices]
+                dst.write("\t".join(fields[:9] + format_and_samples) + "\n")
+            else:
+                dst.write(raw)
+    missing = sorted(wanted - found)
+    if missing:
+        raise ValueError("requested sample IDs not found in VCF: " + ", ".join(missing[:10]))
+    return {"status": "Available", "selected_sample_count": len(found), "output": str(output_path)}
+
 def download_url(url: str, path: str | Path, *, timeout: int = 60, overwrite: bool = False):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
