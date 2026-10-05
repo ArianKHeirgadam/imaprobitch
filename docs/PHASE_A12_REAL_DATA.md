@@ -17,7 +17,13 @@ Preferred order:
 
 The MAF fallback is not labelled as raw WGS. It is converted only to an adapter VCF and remains marked as requiring reference-aware normalization.
 
-## 2. Population / germline reference — 1000 Genomes 30x
+## 2. Paired normal comparator — TCGA-STAD matched normal
+
+TCGA-STAD also contains explicit non-tumor/normal sample metadata. When controlled-access normal/genotype files are available and authorized, they are the preferred paired comparator for somatic tumor-vs-normal analysis. They are **not** an independent healthy population.
+
+A useful hierarchy is: paired TCGA normal for somatic calling/comparison, 1000 Genomes for population/germline reference, and GTEx Stomach for non-diseased tissue context.
+
+## 3. Population / germline reference — 1000 Genomes 30x
 
 Source: IGSR / 1000 Genomes 30x on GRCh38.
 
@@ -27,7 +33,7 @@ This cohort is labelled Population/germline reference cohort, not automatically 
 
 A formal Cancer-vs-Healthy interpretation still requires review of population background, sample type, pipeline, coverage and other technical factors.
 
-## 3. Tissue reference — GTEx Stomach
+## 4. Tissue reference — GTEx Stomach
 
 GTEx provides non-diseased tissue references including stomach.
 
@@ -87,7 +93,13 @@ python -m wgr_cdp.cli 1000g-select --panel data/raw/1000g_30x/integrated_call_sa
 
 ## Step 7 — Subset each downloaded multi-sample VCF
 
-The library function subset_vcf_samples can create a 250-sample VCF from each downloaded chromosome file while preserving all VCF headers and genotype columns.
+Use the CLI directly:
+
+~~~powershell
+python -m wgr_cdp.cli 1000g-subset --input data/raw/1000g_30x/20201028_CCDG_14151_B01_GRM_WGS_2020-08-05_chr1.recalibrated_variants.vcf.gz --samples results/1000g_250_samples.txt --output data/healthy/1000g_250/chr1.vcf.gz
+~~~
+
+The underlying library preserves all VCF headers and genotype columns.
 
 ## Step 8 — Convert an open TCGA masked MAF when WGS VCF is unavailable
 
