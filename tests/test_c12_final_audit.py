@@ -14,6 +14,10 @@ REQUIRED = [
 
 
 def _fixture(root: Path):
+    (root / "c11_integration_manifest.json").write_text(
+        json.dumps({"schema_version": "c11.integration.v1", "status": "PASS"}),
+        encoding="utf-8",
+    )
     (root / "candidate_evidence.csv").write_text(
         "candidate_id,recurrence_prevalence,cfdna_suitability,patient_coverage,external_cancer_evidence,research_score,score_fields\nA,0.5,0.7,0.8,Data unavailable,0.7,statistical_strength\n",
         encoding="utf-8",
