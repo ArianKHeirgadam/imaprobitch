@@ -121,3 +121,29 @@ def test_complete_a6_record_integrates_labelled_baselines():
     result = run_a6(candidates(), WEIGHTS, k=2, n_bootstrap=5, labels=[1, 1, 0])
     assert result["baseline_models"]["logistic"]["status"] == "Available"
     assert result["baseline_models"]["elastic_net"]["status"] == "Available"
+
+
+def test_ablation_comparison_reports_descriptive_delta_only():
+    from wgr_cdp.research.ablation import compare
+    rows = run_ablations(candidates(), WEIGHTS, matrix={"P1":{"A":1,"B":0},"P2":{"A":0,"B":1}}, k=2)
+    out = compare({r["ablation"]: r for r in rows})
+    assert out["status"] == "Available"
+    full = next(r for r in out["ablations"] if r["ablation"] == "full_wgr_cdp")
+    assert full["coverage_delta_vs_full"] == 0.0
+
+
+def test_ablation_missing_coverage_does_not_become_zero():
+    from wgr_cdp.research.ablation import compare
+    rows = run_ablations(candidates(), WEIGHTS, matrix=None, k=2)
+    out = compare({r["ablation"]: r for r in rows})
+    assert all(r["coverage"] == "Data unavailable" for r in out["ablations"])
+    assert all(r["coverage_delta_vs_full"] == "Data unavailable" for r in out["ablations"])
+
+
+def test_bootstrap_zero_is_unavailable_not_division_by_zero():
+    assert bootstrap_rank_stability(candidates(), WEIGHTS, n_bootstrap=0)["status"] == "Data unavailable"
+
+
+def test_ablation_k_is_capped_at_fifteen():
+    rows = run_ablations(candidates(), WEIGHTS, k=100)
+    assert all(row["k"] <= 15 for row in rows)
