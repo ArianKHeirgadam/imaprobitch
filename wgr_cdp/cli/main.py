@@ -1,6 +1,6 @@
 """WGR-CDP command line interface."""
 import argparse, json
-from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, maf_batch_command, one_kg_select_command, one_kg_subset_command, study_cohort_command, study_acquisition_manifest_command, open_study_acquisition_manifest_command
+from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, maf_batch_command, one_kg_select_command, one_kg_subset_command, study_cohort_command, study_acquisition_manifest_command, open_study_acquisition_manifest_command, normalize_vcf_command, normalize_vcf_batch_command
 from wgr_cdp.release.reproducibility import release_readiness
 
 
@@ -66,6 +66,18 @@ def build_parser():
     mb.add_argument("--input",required=True)
     mb.add_argument("--output",required=True)
     mb.add_argument("--pattern",default="*.maf.gz")
+    nv=sub.add_parser("normalize-vcf",help="reference-aware normalize one adapter VCF")
+    nv.add_argument("--input",required=True)
+    nv.add_argument("--output",required=True)
+    nv.add_argument("--reference",required=True,help="GRCh38 reference FASTA")
+    nv.add_argument("--reference-build",default="GRCh38")
+
+    nvb=sub.add_parser("normalize-vcf-batch",help="reference-aware normalize a directory of VCF adapters")
+    nvb.add_argument("--input",required=True)
+    nvb.add_argument("--output",required=True)
+    nvb.add_argument("--reference",required=True,help="GRCh38 reference FASTA")
+    nvb.add_argument("--pattern",default="*.vcf")
+    nvb.add_argument("--reference-build",default="GRCh38")
     ss=sub.add_parser("1000g-select",help="select a deterministic population-balanced 1000G sample list")
     ss.add_argument("--panel",required=True)
     ss.add_argument("--output",required=True)
@@ -137,6 +149,10 @@ def main(argv=None):
         result=maf_to_vcf_command(args.input,args.output)
     elif args.command=="maf-batch":
         result=maf_batch_command(args.input,args.output,args.pattern)
+    elif args.command=="normalize-vcf":
+        result=normalize_vcf_command(args.input,args.output,args.reference,args.reference_build)
+    elif args.command=="normalize-vcf-batch":
+        result=normalize_vcf_batch_command(args.input,args.output,args.reference,args.pattern,args.reference_build)
     elif args.command=="1000g-select":
         result=one_kg_select_command(args.panel,args.output,args.samples)
     elif args.command=="1000g-subset":
