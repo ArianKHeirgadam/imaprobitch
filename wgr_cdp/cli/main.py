@@ -1,6 +1,6 @@
 """WGR-CDP command line interface."""
 import argparse, json
-from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command
+from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command
 from wgr_cdp.release.reproducibility import release_readiness
 
 
@@ -46,6 +46,22 @@ def build_parser():
     acq.add_argument("--output",required=True)
     acq.add_argument("--token")
     acq.add_argument("--limit",type=int)
+    dp=sub.add_parser("data-plan",help="write the recommended TCGA-STAD/1000G/GTEx real-data acquisition plan")
+    dp.add_argument("--output",required=True)
+    dp.add_argument("--healthy-samples",type=int,default=250)
+    dp.add_argument("--no-gtex",action="store_true")
+    kg=sub.add_parser("1000g-manifest",help="write public 1000 Genomes 30x GRCh38 download manifest")
+    kg.add_argument("--output",required=True)
+    kg.add_argument("--samples",type=int,default=250)
+    kg.add_argument("--chromosomes",help="comma-separated chromosome list, e.g. 1,2,X")
+    ra=sub.add_parser("reference-acquire",help="download URLs from a reference manifest")
+    ra.add_argument("--manifest",required=True)
+    ra.add_argument("--output",required=True)
+    ra.add_argument("--limit",type=int)
+    ra.add_argument("--timeout",type=int,default=60)
+    mt=sub.add_parser("maf-to-vcf",help="convert a GDC masked somatic MAF into per-sample adapter VCFs")
+    mt.add_argument("--input",required=True)
+    mt.add_argument("--output",required=True)
     reg=sub.add_parser("register",help="register verified local files from an A11 manifest")
     reg.add_argument("--manifest",required=True)
     reg.add_argument("--root",required=True)
@@ -79,6 +95,14 @@ def main(argv=None):
     args=build_parser().parse_args(argv)
     if args.command=="run":
         result=run_command(args.healthy,args.cancer,args.output,args.annotate,args.alpha,args.timeout,args.features,args.metadata,args.max_panel_size,args.depth,args.error_rate,args.cnv,args.literature_search,args.validation_candidates,args.bootstrap,args.background,args.max_background,args.cohort_metadata)
+    elif args.command=="data-plan":
+        result=data_plan_command(args.output,args.healthy_samples,not args.no_gtex)
+    elif args.command=="1000g-manifest":
+        result=one_kg_manifest_command(args.output,args.samples,args.chromosomes)
+    elif args.command=="reference-acquire":
+        result=reference_acquire_command(args.manifest,args.output,args.limit,args.timeout)
+    elif args.command=="maf-to-vcf":
+        result=maf_to_vcf_command(args.input,args.output)
     elif args.command=="validate":
         result=validate_command()
     elif args.command=="release":
@@ -91,6 +115,14 @@ def main(argv=None):
         result=acquire_command(args.manifest,args.output,args.token,args.limit)
     elif args.command=="register":
         result=register_command(args.manifest,args.root,args.output)
+    elif args.command=="data-plan":
+        result=data_plan_command(args.output,args.healthy_samples,not args.no_gtex)
+    elif args.command=="1000g-manifest":
+        result=one_kg_manifest_command(args.output,args.samples,args.chromosomes)
+    elif args.command=="reference-acquire":
+        result=reference_acquire_command(args.manifest,args.output,args.limit,args.timeout)
+    elif args.command=="maf-to-vcf":
+        result=maf_to_vcf_command(args.input,args.output)
     else:
         result=report_command(args.output)
     print(json.dumps(result,indent=2,default=str)); return 0
