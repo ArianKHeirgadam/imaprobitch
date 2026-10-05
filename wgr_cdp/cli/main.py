@@ -1,6 +1,6 @@
 """WGR-CDP command line interface."""
 import argparse, json
-from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, one_kg_select_command, one_kg_subset_command, study_cohort_command
+from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, one_kg_select_command, one_kg_subset_command, study_cohort_command, study_acquisition_manifest_command
 from wgr_cdp.release.reproducibility import release_readiness
 
 
@@ -85,6 +85,12 @@ def build_parser():
     sc.add_argument("--access",choices=["open","controlled"])
     sc.add_argument("--timeout",type=int,default=30)
     sc.add_argument("--strategy",choices=["WGS","WXS"],default="WGS")
+    sam=sub.add_parser("study-acquisition-manifest",help="build a download manifest from a selected paired study cohort")
+    sam.add_argument("--study",required=True)
+    sam.add_argument("--output",required=True)
+    sam.add_argument("--no-snv",action="store_true")
+    sam.add_argument("--no-cnv",action="store_true")
+    sam.add_argument("--public-fallback",action="store_true")
     report=sub.add_parser("report",help="locate an existing HTML report")
     report.add_argument("--output",required=True)
     return parser
@@ -128,6 +134,8 @@ def main(argv=None):
         result=one_kg_subset_command(args.input,args.samples,args.output)
     elif args.command=="study-cohort":
         result=study_cohort_command(args.project,args.output,args.access,args.timeout,args.strategy)
+    elif args.command=="study-acquisition-manifest":
+        result=study_acquisition_manifest_command(args.study,args.output,not args.no_snv,not args.no_cnv,args.public_fallback)
     elif args.command=="validate":
         result=validate_command()
     elif args.command=="release":
