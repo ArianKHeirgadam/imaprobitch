@@ -7,7 +7,6 @@ sample an independent healthy population.
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import asdict
 from pathlib import Path
 import json
 
@@ -171,3 +170,60 @@ def write_study_selection(path, selection):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(selection, indent=2, sort_keys=True), encoding="utf-8")
     return path
+
+
+def _file_rank(row, modality):
+    workflow = str((row.get("analysis") or {}).get("workflow_type") or row.get("workflow_type") or "").lower()
+    data_type = str(row.get("data_type") or "").lower()
+    name = str(row.get("file_name") or "").lower()
+    if modality == "SNV_INDEL":
+        return (
+            0 if "gatk4 mutect2 pair" in workflow else
+            1 if "gatk4 mutect2" in workflow else
+            2 if "mutect2" in workflow else
+            3 if "varscan2" in workflow else
+            4 if "svaba" in workflow else 9,
+            0 if "annotated somatic mutation" in data_type else
+            1 if "raw simple somatic mutation" in data_type else 9,
+            name,
+            str(row.get("file_id", "")),
+        )
+    return (
+        0 if "allele-specific copy number segment" in data_type else
+        1 if "copy number segment" in data_type else 2,
+        0 if "ascat" in workflow else
+        1 if "facets" in workflow else 2,
+        name,
+        str(row.get("file_id", "")),
+    )
+
+def select_primary_variant_files(variant_files, *, modality="SNV_INDEL",
+                                 access=None, strategy=None, case_ids=None):
+    """Select at most one deterministic primary file per paired case.
+
+    Alternative callers remain discoverable in the upstream inventory, but
+    downstream discovery uses one primary representation per case to avoid
+    double-counting the same biological sample across callers.
+    """
+    candidates = select_variant_files(
+        variant_files,
+        modality=modality,
+        access=access,
+        strategy=strategy,
+        case_ids=case_ids,
+    )
+    wanted_cases = {str(x) for x in (case_ids or [])}
+    grouped = defaultdict(list)
+    for row in candidates:
+        ids = _file_case_ids(row)
+        if wanted_cases:
+            ids &= wanted_cases
+        for case_id in ids:
+            grouped[str(case_id)].append(row)
+    selected = []
+    for case_id in sorted(grouped):
+        selected.append(dict(min(
+            grouped[case_id],
+            key=lambda row: _file_rank(row, modality),
+        )))
+    return selected
