@@ -34,10 +34,12 @@ The CLI now executes A5 after the existing real cohort/CNV analysis. Every run w
 - `candidate_evidence.csv`
 - `candidate_constraints.json`
 - `literature_whitespace.json`
+- `c10_literature_evidence.json`
+- `c10_literature_evidence.csv`
 - `ranking_sensitivity.json`
 
 The evidence layer consumes the actual discovery candidates and CNV candidates produced by the run; it does not create a separate synthetic candidate universe.
 
-The CLI option `--literature-search` explicitly enables live PubMed ESearch. Without that flag, literature counts remain `Data unavailable` and the run records that no search was performed.
+The CLI option `--literature-search` explicitly enables the live PubMed and Europe PMC searches defined by C-10. Without that flag, literature counts remain `Data unavailable` and the run records that no search was performed.
 
 A5 remains research prioritization only. It does not convert evidence scores into diagnostic probabilities or clinical claims.
