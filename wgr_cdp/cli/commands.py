@@ -494,6 +494,76 @@ def one_kg_subset_command(input_path, sample_list, output_path):
     ]
     return subset_vcf_samples(input_path, output_path, ids)
 
+def study_acquisition_manifest_command(
+    study_path,
+    output,
+    include_snv=True,
+    include_cnv=True,
+    include_public_fallback=False,
+):
+    """Create a download manifest from an already-selected paired study cohort.
+
+    Only deterministic primary files are included; alternative callers are
+    provenance-only and are never downloaded by this manifest.
+    """
+    from wgr_cdp.data_ingestion.gdc_acquisition import (
+        build_acquisition_manifest,
+        write_acquisition_manifest,
+        write_tsv_manifest,
+    )
+    study = json.loads(Path(study_path).read_text(encoding="utf-8"))
+    files = []
+    if include_snv:
+        files.extend(study.get("snv_indel_files") or [])
+    if include_cnv:
+        files.extend(study.get("cnv_files") or [])
+    if include_public_fallback:
+        files.extend(study.get("public_wxs_maf_fallback") or [])
+
+    seen = set()
+    unique = []
+    for row in files:
+        file_id = str(row.get("file_id") or "").strip()
+        if not file_id or file_id in seen:
+            continue
+        seen.add(file_id)
+        item = dict(row)
+        item["study_role"] = (
+            "paired_tumor_normal_primary"
+            if str(row.get("experimental_strategy") or "").upper() == "WGS"
+            else "public_wxs_fallback"
+        )
+        item["download_status"] = "planned"
+        item["local_path"] = None
+        item["verified"] = False
+        unique.append(item)
+
+    manifest = build_acquisition_manifest(
+        str(study.get("source_project") or "Data unavailable"),
+        unique,
+        selected_types=None,
+    )
+    manifest["study_schema_version"] = study.get("schema_version", "Data unavailable")
+    manifest["study_path"] = str(study_path)
+    manifest["paired_case_count"] = int(study.get("selected_pair_count") or 0)
+    manifest["selection_counts"] = {
+        "snv_indel_primary": len(study.get("snv_indel_files") or []),
+        "cnv_primary": len(study.get("cnv_files") or []),
+        "public_wxs_maf_fallback": len(study.get("public_wxs_maf_fallback") or []),
+        "alternatives_not_downloaded": int(
+            study.get("alternative_variant_file_count") or 0
+        ),
+    }
+    manifest["download_policy"] = (
+        "Primary paired WGS files only unless public fallback is explicitly enabled. "
+        "Alternative callers are retained for provenance and are not downloaded."
+    )
+    json_path = write_acquisition_manifest(output, manifest)
+    tsv_path = write_tsv_manifest(str(output).replace(".json", ".tsv"), manifest)
+    manifest["output_json"] = str(json_path)
+    manifest["output_tsv"] = str(tsv_path)
+    return manifest
+
 def study_cohort_command(project="TCGA-STAD", output="results/tcga_stad_study.json", access=None, timeout=30, strategy="WGS"):
     from wgr_cdp.data_ingestion.gdc_cohort import (
         query_cases, query_variant_files, build_cohort_manifest,
