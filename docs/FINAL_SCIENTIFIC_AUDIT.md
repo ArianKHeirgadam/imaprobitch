@@ -167,3 +167,12 @@ inventory includes C-11 outputs.
 
 Scientific-result status remains conditional on real datasets and independent
 validation.
+
+
+## C-12: final scientific hardening
+
+C-12 closes the remaining design-review gaps: explicit cfDNA-oriented suitability,
+presence-based patient coverage, method-specific CNV statistics, cohort metadata/confounder
+audit, typed external evidence hierarchy, frozen validation coverage and evidence-strength
+confidence. These are software and provenance contracts; empirical scientific claims remain
+data-dependent.
