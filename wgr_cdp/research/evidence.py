@@ -102,24 +102,20 @@ def apply_constraints(
 
     # Unknown detectability is not negative evidence. A positive minimum threshold,
     # however, cannot be satisfied without an observed detectability value.
-    if detectability is None:
-        detectable = min_detectability <= 0.0 and not _constraint_bool(
-            constraints.get("assay_ok"), True
-        ) is False
-        if min_detectability > 0.0:
-            detectable = False
-        elif not _constraint_bool(constraints.get("assay_ok"), True):
-            detectable = False
-    else:
-        detectable = detectability >= min_detectability
+    detectable = (
+        min_detectability <= 0.0
+        if detectability is None
+        else detectability >= min_detectability
+    )
 
-    # Unknown background remains unknown, not a measured safe/unsafe result.
-    # It does not independently disqualify a candidate unless a maximum-background
-    # threshold stricter than the unconstrained default is requested.
-    if background is None:
-        background_safe = max_background >= 1.0
-    else:
-        background_safe = background <= max_background
+    # This field is a safety score (higher is safer), not raw background burden.
+    # Missing background safety does not become positive evidence or a measured
+    # failure; it remains unobserved and is handled separately by the score layer.
+    background_safe = (
+        True
+        if background is None
+        else background >= max(0.0, 1.0 - max_background)
+    )
 
     assay_ok = _constraint_bool(constraints.get("assay_ok"), True) if require_assay else True
     fpr_ok = _constraint_bool(constraints.get("fpr_ok"), True) if require_fpr else True
