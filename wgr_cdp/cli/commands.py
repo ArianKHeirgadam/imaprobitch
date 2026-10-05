@@ -179,6 +179,7 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         constraints={"min_detectability": 0.0, "max_background": max_background},
         literature_search=literature_search,
         matrix=matrix,
+        presence_matrix=presence_matrix,
     )
     append_a5_to_report(output, result["a5"])
 
