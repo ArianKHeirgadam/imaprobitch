@@ -59,135 +59,118 @@ def _gene_events(rows):
 
 
 def _compare(rows, key_name="region"):
+    """Compare CNV events using explicit observations only.
 
-    cases = sorted(
-        {
-            r["sample_id"]
-            for r in rows
-            if str(
-                r.get("group","")
-            ).lower()
-            in {
-                "case",
-                "cancer",
-                "tumor"
-            }
-        }
-    )
+    A missing segment is not interpreted as a neutral CNV call. A sample is
+    included in a denominator only when the relevant region has an explicit
+    CNV observation (GAIN, LOSS, or NEUTRAL). Data-unavailable observations
+    are excluded from both carrier and denominator counts.
+    """
+    case_samples = {
+        r["sample_id"] for r in rows
+        if str(r.get("group", "")).lower() in {"case", "cancer", "tumor"}
+    }
+    control_samples = {
+        r["sample_id"] for r in rows
+        if str(r.get("group", "")).lower() in {"control", "healthy", "normal"}
+    }
+    if not case_samples or not control_samples:
+        raise ValueError("CNV cohort comparison requires both Cancer and Healthy samples")
 
-
-    controls = sorted(
-        {
-            r["sample_id"]
-            for r in rows
-            if str(
-                r.get("group","")
-            ).lower()
-            in {
-                "control",
-                "healthy",
-                "normal"
-            }
-        }
-    )
-
-
-    if not cases or not controls:
-        raise ValueError(
-            "CNV cohort comparison requires both Cancer and Healthy samples"
-        )
-
+    def region_key(row):
+        return f"{row['chrom']}:{row['start']}-{row['end']}"
 
     def key(row):
+        base = row.get("gene") if key_name == "gene" else region_key(row)
+        return f"{base}|{row['event_type']}"
 
-        if key_name == "region":
-            return _event_key(row)
+    def observed(row):
+        return row.get("event_type") in {"GAIN", "LOSS", "NEUTRAL"}
 
-        return f"{row[key_name]}|{row['event_type']}"
-
-
-    results=[]
-
-
-    features = sorted(
-        {
-            key(r)
-            for r in rows
-            if r["event_type"] in {
-                "GAIN",
-                "LOSS"
-            }
-        }
-    )
-
+    features = sorted({
+        key(r) for r in rows
+        if r.get("event_type") in {"GAIN", "LOSS"}
+    })
+    results = []
 
     for feature in features:
+        event = feature.rsplit("|", 1)[1]
+        present = [r for r in rows if key(r) == feature]
+        if key_name == "region":
+            base = feature.rsplit("|", 1)[0]
+            region_rows = [r for r in rows if region_key(r) == base and observed(r)]
+        else:
+            base = feature.rsplit("|", 1)[0]
+            region_rows = [r for r in rows if str(r.get("gene", "")) == base and observed(r)]
 
-        present = [
-            r
-            for r in rows
-            if key(r)==feature
-        ]
+        case_observed = {r["sample_id"] for r in region_rows if r["sample_id"] in case_samples}
+        control_observed = {r["sample_id"] for r in region_rows if r["sample_id"] in control_samples}
+        case_carriers = {r["sample_id"] for r in present if r["sample_id"] in case_samples}
+        control_carriers = {r["sample_id"] for r in present if r["sample_id"] in control_samples}
 
+        a = len(case_carriers & case_observed)
+        b = len(control_carriers & control_observed)
+        case_n = len(case_observed)
+        control_n = len(control_observed)
+        c_count = case_n - a
+        d_count = control_n - b
 
-        case_carriers = {
-            r["sample_id"]
-            for r in present
-            if r["sample_id"] in cases
-        }
-
-
-        control_carriers = {
-            r["sample_id"]
-            for r in present
-            if r["sample_id"] in controls
-        }
-
-
-        a=len(case_carriers)
-        b=len(control_carriers)
-
-        c=len(cases)-a
-        d=len(controls)-b
-
-
-        case_frequency=a/len(cases)
-        control_frequency=b/len(controls)
-
-
-        results.append(
-            {
-                "feature":feature,
-                "event_type":present[0]["event_type"],
-
-                "case_carriers":a,
-                "control_carriers":b,
-
-                "case_n":len(cases),
-                "control_n":len(controls),
-
-                "case_frequency":case_frequency,
-                "control_frequency":control_frequency,
-
-                "frequency_difference":
-                    case_frequency-control_frequency,
-
-                "effect_size":
-                    abs(
-                        case_frequency-control_frequency
-                    ),
-
-                "p_value":
-                    fisher_exact_2x2(
-                        a,b,c,d
-                    )
-            }
+        case_frequency = a / case_n if case_n else None
+        control_frequency = b / control_n if control_n else None
+        frequency_difference = (
+            case_frequency - control_frequency
+            if case_frequency is not None and control_frequency is not None else None
         )
 
+        value_rows = [r for r in region_rows if r.get("event_type") == event]
+        numeric_values = []
+        for row in value_rows:
+            raw = row.get("log2_ratio")
+            if raw in (None, ""):
+                raw = row.get("segment_mean")
+            try:
+                if raw not in (None, ""):
+                    numeric_values.append(float(raw))
+            except (TypeError, ValueError):
+                pass
+
+        case_values = [
+            float(r.get("log2_ratio") if r.get("log2_ratio") not in (None, "") else r.get("segment_mean"))
+            for r in value_rows
+            if r["sample_id"] in case_samples
+            and (r.get("log2_ratio") not in (None, "") or r.get("segment_mean") not in (None, ""))
+        ]
+        control_values = [
+            float(r.get("log2_ratio") if r.get("log2_ratio") not in (None, "") else r.get("segment_mean"))
+            for r in value_rows
+            if r["sample_id"] in control_samples
+            and (r.get("log2_ratio") not in (None, "") or r.get("segment_mean") not in (None, ""))
+        ]
+
+        results.append({
+            "feature": feature,
+            "event_type": event,
+            "case_carriers": a,
+            "control_carriers": b,
+            "case_n": case_n,
+            "control_n": control_n,
+            "case_observed": case_n,
+            "control_observed": control_n,
+            "case_frequency": case_frequency,
+            "control_frequency": control_frequency,
+            "frequency_difference": frequency_difference,
+            "effect_size": abs(frequency_difference) if frequency_difference is not None else None,
+            "direction": (
+                "case_enriched" if frequency_difference is not None and frequency_difference > 0
+                else "control_enriched" if frequency_difference is not None and frequency_difference < 0
+                else "balanced" if frequency_difference is not None else "Data unavailable"
+            ),
+            "case_mean_log2": sum(case_values) / len(case_values) if case_values else None,
+            "control_mean_log2": sum(control_values) / len(control_values) if control_values else None,
+            "p_value": fisher_exact_2x2(a, b, c_count, d_count) if case_n and control_n else 1.0,
+        })
 
     return add_fdr(results)
-
-
 
 def _score(row):
 
