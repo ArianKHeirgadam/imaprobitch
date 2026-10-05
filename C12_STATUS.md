@@ -2,7 +2,8 @@
 
 ## Phase status
 Implementation: COMPLETE
-Local regression: REQUIRED
+Local regression: PASS — 378 passed in 3.22s
+Phase status: CLOSED
 Scientific claims: CONDITIONAL / data-dependent
 
 | Requirement | Implementation | Artifact / API | State |
@@ -29,4 +30,6 @@ Scientific claims: CONDITIONAL / data-dependent
 
 ## GO / NO-GO
 GO for implementation.
-CLOSE only after the local authoritative full-suite test is green.
+CLOSED after the authoritative local full-suite regression passed: `378 passed in 3.22s`.
+
+This closes the C-12 software/scientific hardening phase; data-dependent scientific limitations remain unchanged.
