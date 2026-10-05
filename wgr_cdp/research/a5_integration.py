@@ -121,6 +121,7 @@ def write_a5_artifacts(output_dir, candidates, weights=None, constraints=None,
         "ranked_count":len(ranking["ranked"]),
         "ineligible_count":len(ranking["ineligible"]),
         "unscored_count":len(ranking["unscored"]),
+        "c10":c10,
     }
 
 def append_a5_to_report(output_dir, a5_result):
@@ -143,6 +144,9 @@ def append_a5_to_report(output_dir, a5_result):
         "<code>candidate_constraints.json</code>, "
         "<code>literature_whitespace.json</code>, "
         "<code>ranking_sensitivity.json</code>.</p>"
+        "<p>C-10 literature artifacts: "
+        "<code>c10_literature_evidence.json</code>, "
+        "<code>c10_literature_evidence.csv</code>.</p>"
     )
     marker = "</body>"
     if marker in document:
