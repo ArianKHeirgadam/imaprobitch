@@ -189,7 +189,8 @@ def build_final_panel(
     min_gain=0.02,
     bootstrap=200,
     candidate_layers=None,
-       """Produce the final ranked candidate set and complementary coverage panel."""
+):
+    """Produce the final ranked candidate set and complementary coverage panel."""
     weights = dict(weights or DEFAULT_WEIGHTS)
     constraints = dict(constraints or {"min_detectability": 0.0, "max_background": 1.0})
 
