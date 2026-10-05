@@ -14,6 +14,8 @@ def test_cli_commands():
     assert execute("acquire")["command"] == "acquire"
     assert execute("register")["command"] == "register"
     assert execute("cohort")["command"] == "cohort"
+    assert execute("normalize-vcf")["command"] == "normalize-vcf"
+    assert execute("normalize-vcf-batch")["command"] == "normalize-vcf-batch"
 
 
 def test_unknown_cli_command():
@@ -30,3 +32,19 @@ def test_cli_accepts_blood_background_and_max_background():
     ])
     assert args.background == "background.csv"
     assert args.max_background == 0.10
+
+
+def test_cli_accepts_reference_aware_normalization():
+    from wgr_cdp.cli.main import build_parser
+
+    args = build_parser().parse_args([
+        "normalize-vcf-batch",
+        "--input", "vcfs",
+        "--output", "normalized",
+        "--reference", "GRCh38.fa",
+        "--reference-build", "GRCh38",
+        "--pattern", "*.vcf",
+    ])
+    assert args.reference == "GRCh38.fa"
+    assert args.reference_build == "GRCh38"
+    assert args.pattern == "*.vcf"
