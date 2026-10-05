@@ -25,6 +25,7 @@ def test_quality_gate_fail():
 
 
 from wgr_cdp.research.validation import (
+    patient_level_split,
     stratified_patient_level_split,
     build_split_manifest,
     write_split_manifest,
