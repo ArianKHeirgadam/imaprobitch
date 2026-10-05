@@ -257,3 +257,34 @@ def test_patient_matrix_assay_defaults_are_not_fabricated():
         assay={"depth": 300},
     )
     assert 0 < matrix["P1"]["c1"] <= 1
+
+
+def test_pon_uses_only_explicit_normal_observations():
+    from wgr_cdp.research.blood_background import build_pon, annotate_pon
+    data = [
+        {"patient": "H1", "group": "control", "region": "1:10-10", "status": "Detected"},
+        {"patient": "H2", "group": "control", "region": "1:10-10", "status": "Not detected"},
+        {"patient": "H3", "group": "control", "region": "1:20-20", "status": "Data unavailable"},
+        {"patient": "H4", "group": "control", "region": "1:20-20", "status": "Not detected"},
+    ]
+    pon = build_pon(data)
+    assert pon["1:10-10"]["observed_samples"] == 2
+    assert pon["1:10-10"]["carrier_samples"] == 1
+    assert pon["1:10-10"]["frequency"] == 0.5
+    assert pon["1:20-20"]["observed_samples"] == 1
+    assert pon["1:20-20"]["frequency"] == 0.0
+    annotated = annotate_pon([{"region": "1:30-30"}], pon)
+    assert annotated[0]["pon_frequency"] is None
+    assert annotated[0]["pon_status"] == "Data unavailable"
+
+
+def test_background_safety_is_explicit_when_source_is_available():
+    from wgr_cdp.research.blood_background import estimate_background, filter_candidates
+    background = estimate_background([
+        {"region": "1:10-10", "healthy_plasma": 0.08},
+        {"region": "1:10-10", "chip": 0.02},
+    ])
+    kept, rejected = filter_candidates([{"region": "1:10-10"}], background, max_background=0.10)
+    assert not rejected
+    assert kept[0]["blood_background_max"] == 0.08
+    assert kept[0]["blood_background_safety"] == 0.92
