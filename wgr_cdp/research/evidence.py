@@ -1,42 +1,216 @@
-"""Transparent candidate evidence and hard-constraint filtering."""
+"""Transparent, missingness-aware candidate evidence and constraint filtering."""
 from __future__ import annotations
-EVIDENCE_FIELDS = ("biological_evidence","statistical_strength","detectability","blood_background_safety","early_stage_score","specificity_score","literature_novelty","literature_validation_gap","literature_diagnostic_utility")
+
+import math
+
+EVIDENCE_FIELDS = (
+    "biological_evidence",
+    "statistical_strength",
+    "detectability",
+    "blood_background_safety",
+    "early_stage_score",
+    "specificity_score",
+    "literature_novelty",
+    "literature_validation_gap",
+    "literature_diagnostic_utility",
+)
+_UNAVAILABLE = "Data unavailable"
+
+
 def _score(value):
-    if value is None or value == "Data unavailable": return None
-    try: value=float(value)
-    except (TypeError,ValueError): return None
-    return max(0.0,min(1.0,value))
+    """Normalize a measured score to [0, 1]; never coerce invalid values to evidence."""
+    if value is None or value == _UNAVAILABLE or isinstance(value, bool):
+        return None
+    try:
+        value = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(value):
+        return None
+    return max(0.0, min(1.0, value))
+
+
+def _weight(value, key):
+    """Weights must be explicit finite non-negative numbers."""
+    if isinstance(value, bool):
+        raise ValueError(f"Weight for {key!r} must be a finite non-negative number")
+    try:
+        result = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"Weight for {key!r} must be a finite non-negative number") from exc
+    if not math.isfinite(result) or result < 0:
+        raise ValueError(f"Weight for {key!r} must be a finite non-negative number")
+    return result
+
+
+def _constraint_bool(value, default=True):
+    """Parse bool-like configuration values without bool('false') becoming True."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "y"}:
+            return True
+        if normalized in {"false", "0", "no", "n"}:
+            return False
+    return default
+
+
+def _bounded_constraint(value, name, default):
+    if value is None:
+        value = default
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{name} must be a finite number between 0 and 1") from exc
+    if not math.isfinite(number) or not 0 <= number <= 1:
+        raise ValueError(f"{name} must be a finite number between 0 and 1")
+    return number
+
+
 def normalize_evidence(candidate):
-    row=dict(candidate or {}); literature=row.get("literature") or {}
-    aliases={"literature_novelty":literature.get("novelty",row.get("literature_novelty")),"literature_validation_gap":literature.get("validation_gap",row.get("literature_validation_gap")),"literature_diagnostic_utility":literature.get("diagnostic_utility",row.get("literature_diagnostic_utility"))}
+    row = dict(candidate or {})
+    literature = row.get("literature") or {}
+    aliases = {
+        "literature_novelty": literature.get("novelty", row.get("literature_novelty")),
+        "literature_validation_gap": literature.get("validation_gap", row.get("literature_validation_gap")),
+        "literature_diagnostic_utility": literature.get("diagnostic_utility", row.get("literature_diagnostic_utility")),
+    }
     for key in EVIDENCE_FIELDS:
-        value=aliases.get(key,row.get(key)); row[key]=_score(value) if value is not None else "Data unavailable"
+        value = aliases.get(key, row.get(key))
+        row[key] = _score(value) if value is not None else _UNAVAILABLE
     return row
-def apply_constraints(candidate,min_detectability=0.0,max_background=1.0,require_assay=True,require_fpr=True):
-    row=normalize_evidence(candidate); constraints=dict(row.get("constraints") or {})
-    detectability=_score(row.get("detectability")); background=_score(row.get("blood_background_safety"))
-    # Missing detectability is not negative evidence. It becomes a hard failure only when
-    # the caller explicitly requires an assay/detectability threshold.
-    detectable=True if detectability is None and float(min_detectability) <= 0 else ((not require_assay) if detectability is None else detectability>=float(min_detectability))
-    background_safe=True if background is None else background>=max(0.0,1.0-float(max_background))
-    assay_ok=bool(constraints.get("assay_ok",True)) if require_assay else True
-    fpr_ok=bool(constraints.get("fpr_ok",True)) if require_fpr else True
-    row["constraints"]={**constraints,"detectable":detectable,"background_safe":background_safe,"assay_ok":assay_ok,"fpr_ok":fpr_ok,"eligible":bool(detectable and background_safe and assay_ok and fpr_ok)}
+
+
+def apply_constraints(
+    candidate,
+    min_detectability=0.0,
+    max_background=1.0,
+    require_assay=True,
+    require_fpr=True,
+):
+    row = normalize_evidence(candidate)
+    constraints = dict(row.get("constraints") or {})
+    min_detectability = _bounded_constraint(min_detectability, "min_detectability", 0.0)
+    max_background = _bounded_constraint(max_background, "max_background", 1.0)
+    detectability = _score(row.get("detectability"))
+    background = _score(row.get("blood_background_safety"))
+
+    # Unknown detectability is not negative evidence. A positive minimum threshold,
+    # however, cannot be satisfied without an observed detectability value.
+    if detectability is None:
+        detectable = min_detectability <= 0.0 and not _constraint_bool(
+            constraints.get("assay_ok"), True
+        ) is False
+        if min_detectability > 0.0:
+            detectable = False
+        elif not _constraint_bool(constraints.get("assay_ok"), True):
+            detectable = False
+    else:
+        detectable = detectability >= min_detectability
+
+    # Unknown background remains unknown, not a measured safe/unsafe result.
+    # It does not independently disqualify a candidate unless a maximum-background
+    # threshold stricter than the unconstrained default is requested.
+    if background is None:
+        background_safe = max_background >= 1.0
+    else:
+        background_safe = background <= max_background
+
+    assay_ok = _constraint_bool(constraints.get("assay_ok"), True) if require_assay else True
+    fpr_ok = _constraint_bool(constraints.get("fpr_ok"), True) if require_fpr else True
+    row["constraints"] = {
+        **constraints,
+        "detectable": bool(detectable),
+        "background_safe": bool(background_safe),
+        "assay_ok": bool(assay_ok),
+        "fpr_ok": bool(fpr_ok),
+        "eligible": bool(detectable and background_safe and assay_ok and fpr_ok),
+    }
     return row
+
+
 def evidence_vector(candidate):
-    row=normalize_evidence(candidate); return {key:row[key] for key in EVIDENCE_FIELDS}
-def transparent_weighted_score(candidate,weights):
-    row=normalize_evidence(candidate)
-    usable={k:_score(row.get(k)) for k in EVIDENCE_FIELDS if _score(row.get(k)) is not None and float(weights.get(k,0))>0}
-    total_weight=sum(float(weights.get(k,0)) for k in usable)
-    if total_weight<=0: return {"score":None,"status":"Data unavailable","used_fields":[]}
-    score=sum(usable[k]*float(weights.get(k,0)) for k in usable)/total_weight
-    return {"score":score,"status":"Available","used_fields":sorted(usable)}
-def rank_candidates(candidates,weights,constraints=None):
-    constraints=dict(constraints or {}); evaluated=[]
+    row = normalize_evidence(candidate)
+    return {key: row[key] for key in EVIDENCE_FIELDS}
+
+
+def transparent_weighted_score(candidate, weights):
+    row = normalize_evidence(candidate)
+    weights = dict(weights or {})
+    normalized_weights = {
+        key: _weight(weights.get(key, 0.0), key)
+        for key in EVIDENCE_FIELDS
+    }
+    usable = {
+        key: _score(row.get(key))
+        for key in EVIDENCE_FIELDS
+        if _score(row.get(key)) is not None and normalized_weights[key] > 0
+    }
+    total_weight = sum(normalized_weights[key] for key in usable)
+    if total_weight <= 0:
+        return {
+            "score": None,
+            "status": _UNAVAILABLE,
+            "used_fields": [],
+            "available_field_count": 0,
+            "available_weight": 0.0,
+        }
+    score = sum(usable[key] * normalized_weights[key] for key in usable) / total_weight
+    return {
+        "score": score,
+        "status": "Available",
+        "used_fields": sorted(usable),
+        "available_field_count": len(usable),
+        "available_weight": total_weight,
+    }
+
+
+def rank_candidates(candidates, weights, constraints=None):
+    """Rank eligible candidates only; return mutually exclusive result buckets."""
+    constraints = dict(constraints or {})
+    evaluated = []
+    seen_ids = {}
+    duplicate_ids = set()
     for candidate in candidates:
-        row=apply_constraints(candidate,**constraints); scoring=transparent_weighted_score(row,weights)
-        row["research_score"]=scoring["score"]; row["score_status"]=scoring["status"]; row["score_fields"]=scoring["used_fields"]; evaluated.append(row)
-    eligible=[r for r in evaluated if r["constraints"]["eligible"]]; scored=[r for r in eligible if r["research_score"] is not None]
-    scored.sort(key=lambda r:(-r["research_score"],str(r.get("candidate_id",r.get("candidate","")))))
-    return {"ranked":scored,"ineligible":[r for r in evaluated if not r["constraints"]["eligible"]],"unscored":[r for r in evaluated if r["research_score"] is None]}
+        row = apply_constraints(candidate, **constraints)
+        scoring = transparent_weighted_score(row, weights)
+        row["research_score"] = scoring["score"]
+        row["score_status"] = scoring["status"]
+        row["score_fields"] = scoring["used_fields"]
+        row["score_available_field_count"] = scoring["available_field_count"]
+        candidate_id = str(row.get("candidate_id") or row.get("feature") or row.get("candidate") or "")
+        if candidate_id:
+            if candidate_id in seen_ids:
+                duplicate_ids.add(candidate_id)
+            seen_ids[candidate_id] = seen_ids.get(candidate_id, 0) + 1
+        evaluated.append(row)
+
+    eligible = [row for row in evaluated if row["constraints"]["eligible"]]
+    scored = [row for row in eligible if row["research_score"] is not None]
+    unscored = [row for row in eligible if row["research_score"] is None]
+    ineligible = [row for row in evaluated if not row["constraints"]["eligible"]]
+    scored.sort(
+        key=lambda row: (
+            -row["research_score"],
+            str(row.get("candidate_id") or row.get("feature") or row.get("candidate") or ""),
+        )
+    )
+    return {
+        "ranked": scored,
+        "ineligible": ineligible,
+        "unscored": unscored,
+        "audit": {
+            "candidate_count": len(evaluated),
+            "ranked_count": len(scored),
+            "ineligible_count": len(ineligible),
+            "unscored_count": len(unscored),
+            "duplicate_candidate_ids": sorted(duplicate_ids),
+            "duplicate_candidate_id_count": len(duplicate_ids),
+            "buckets_disjoint": len(scored) + len(ineligible) + len(unscored) == len(evaluated),
+        },
+    }
