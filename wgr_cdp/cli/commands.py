@@ -564,6 +564,54 @@ def study_acquisition_manifest_command(
     manifest["output_tsv"] = str(tsv_path)
     return manifest
 
+def open_study_acquisition_manifest_command(study_path, output):
+    """Build an open-access-only acquisition manifest from the study selection.
+
+    Uses only the separately queried public WXS MAF/VCF fallback and excludes
+    controlled-access primary WGS files.
+    """
+    from wgr_cdp.data_ingestion.gdc_acquisition import (
+        build_acquisition_manifest,
+        write_acquisition_manifest,
+        write_tsv_manifest,
+    )
+    study = json.loads(Path(study_path).read_text(encoding="utf-8"))
+    public = []
+    for row in study.get("public_wxs_maf_fallback") or []:
+        if str(row.get("access") or "").lower() != "open":
+            continue
+        strategy = str(row.get("experimental_strategy") or "").upper()
+        fmt = str(row.get("data_format") or "").upper()
+        if strategy != "WXS" or fmt not in {"MAF", "VCF"}:
+            continue
+        item = dict(row)
+        item["study_role"] = "public_wxs_maf_fallback"
+        public.append(item)
+
+    manifest = build_acquisition_manifest(
+        str(study.get("source_project") or "Data unavailable"),
+        public,
+        selected_types={"SNV_INDEL"},
+    )
+    manifest["study_schema_version"] = study.get("schema_version", "Data unavailable")
+    manifest["study_path"] = str(study_path)
+    manifest["access_policy"] = "open_only"
+    manifest["paired_case_count"] = int(study.get("selected_pair_count") or 0)
+    manifest["open_public_wxs_count"] = len(public)
+    manifest["controlled_primary_excluded"] = (
+        len(study.get("snv_indel_files") or [])
+        + len(study.get("cnv_files") or [])
+    )
+    manifest["download_policy"] = (
+        "Open-access public WXS somatic MAF/VCF fallback only. "
+        "Controlled WGS primary files are excluded and require separate authorization."
+    )
+    json_path = write_acquisition_manifest(output, manifest)
+    tsv_path = write_tsv_manifest(str(output).replace(".json", ".tsv"), manifest)
+    manifest["output_json"] = str(json_path)
+    manifest["output_tsv"] = str(tsv_path)
+    return manifest
+
 def study_cohort_command(project="TCGA-STAD", output="results/tcga_stad_study.json", access=None, timeout=30, strategy="WGS"):
     from wgr_cdp.data_ingestion.gdc_cohort import (
         query_cases, query_variant_files, build_cohort_manifest,
