@@ -19,7 +19,7 @@ Missing evidence remains "Data unavailable" and is never silently converted to z
 Assay/FPR constraints, detectability thresholds, and background constraints are evaluated before ranking. A candidate that fails a hard constraint is excluded from the ranked eligible set.
 
 ## Literature
-PubMed ESearch is used only when explicitly requested by the caller with search=True. Each record stores the exact query, source, date, result count, and status. Failed or unperformed searches remain explicit unavailable/not-searched states.
+C-10 provides the canonical source-separated literature provenance layer. Each candidate is searched with candidate/feature, gene, and region terms plus gastric cancer and cfDNA/ctDNA/plasma/liquid-biopsy context across PubMed and Europe PMC. Each record stores the exact query, source, date, result count, retrieval status, and manual review status. Failed or unperformed searches remain explicit unavailable/not-searched states.
 
 NCBI documents ESearch as the Entrez interface for text queries and result sets. See:
 https://www.ncbi.nlm.nih.gov/books/NBK25499/
