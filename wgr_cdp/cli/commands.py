@@ -471,6 +471,88 @@ def maf_batch_command(input_dir, output_dir, pattern="*.maf.gz"):
     result["manifest"] = str(manifest)
     return result
 
+def normalize_vcf_command(input_path, output_path, reference_fasta, reference_build="GRCh38"):
+    from wgr_cdp.data_ingestion.normalize import normalize_vcf
+    result = normalize_vcf(
+        input_path,
+        output_path,
+        reference_fasta,
+        reference_build=reference_build,
+    )
+    path = Path(output_path)
+    manifest = path.with_suffix(path.suffix + ".normalization.json")
+    manifest.write_text(
+        json.dumps(result, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    result["manifest"] = str(manifest)
+    return result
+
+
+def normalize_vcf_batch_command(
+    input_dir,
+    output_dir,
+    reference_fasta,
+    pattern="*.vcf",
+    reference_build="GRCh38",
+):
+    from wgr_cdp.data_ingestion.normalize import normalize_vcf
+
+    input_dir = Path(input_dir)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    sources = sorted(input_dir.glob(pattern))
+    results = []
+    for source in sources:
+        output = output_dir / source.name
+        result = normalize_vcf(
+            source,
+            output,
+            reference_fasta,
+            reference_build=reference_build,
+        )
+        results.append(result)
+
+    mismatch = sum(item.get("reference_mismatch_count", 0) for item in results)
+    conditional = sum(
+        1 for item in results if item.get("status") != "PASS"
+    )
+    status = (
+        "PASS"
+        if results and conditional == 0
+        else "FAIL"
+        if mismatch > 0
+        else "Data unavailable" if not results else "CONDITIONAL"
+    )
+    manifest = output_dir / "normalization_batch.json"
+    payload = {
+        "schema_version": "A13-NORMALIZATION-BATCH-1",
+        "status": status,
+        "input_dir": str(input_dir),
+        "output_dir": str(output_dir),
+        "reference_fasta": str(reference_fasta),
+        "reference_build": reference_build,
+        "input_file_count": len(sources),
+        "normalized_file_count": sum(
+            1 for item in results if item.get("status") == "PASS"
+        ),
+        "input_record_count": sum(item.get("input_record_count", 0) for item in results),
+        "expanded_record_count": sum(item.get("expanded_record_count", 0) for item in results),
+        "deduplicated_record_count": sum(
+            item.get("deduplicated_record_count", 0) for item in results
+        ),
+        "reference_mismatch_count": mismatch,
+        "conditional_file_count": conditional,
+        "results": results,
+    }
+    manifest.write_text(
+        json.dumps(payload, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    payload["manifest"] = str(manifest)
+    return payload
+
+
 def maf_to_vcf_command(input_path, output_dir):
     from wgr_cdp.data_ingestion.maf import convert_maf_to_vcf
     return convert_maf_to_vcf(input_path, output_dir)
