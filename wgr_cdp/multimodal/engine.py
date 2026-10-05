@@ -168,6 +168,10 @@ def run_multimodal_analysis(feature_path, output_dir, metadata=None, max_panel_s
     write_csv(output/"multimodal_features.csv",rows,list(rows[0].keys()))
     fields=["resolution","region","feature_type","patients","detected","total","detect_rate"]; write_csv(output/"multi_resolution_regions.csv",multi,fields)
     matrix_fields=["patient"]+([k for k in matrix[0] if k!="patient"] if matrix else []); write_csv(output/"patient_candidate_matrix.csv",matrix,matrix_fields)
+    from wgr_cdp.research.patient_coverage import build_presence_matrix, write_presence_matrix
+    presence_source=[{**row,"candidate_id":str(row["region"])+"|"+str(row["feature_type"])} for row in rows]
+    presence=build_presence_matrix(presence_source,patient_key="patient",status_key="status")
+    write_presence_matrix(output/"patient_candidate_presence_matrix.csv",presence)
     stats=[]
     for ft,items in by_type.items(): stats.extend(items)
     if stats: write_csv(output/"multimodal_cohort_comparison.csv",stats,list(stats[0].keys()))
@@ -179,6 +183,6 @@ def run_multimodal_analysis(feature_path, output_dir, metadata=None, max_panel_s
     (output/"panel.json").write_text(json.dumps(panel,indent=2),encoding="utf-8")
     from .report import write_report
     (output/"lod.json").write_text(json.dumps({"estimated_lod":lod,"depth":depth,"error_rate":error_rate},indent=2),encoding="utf-8")
-    result={"feature_types":sorted(by_type),"feature_count":len(rows),"multi_resolution_count":len(multi),"panel":panel,"lod":lod}
+    result={"feature_types":sorted(by_type),"feature_count":len(rows),"multi_resolution_count":len(multi),"panel":panel,"lod":lod,"patient_candidate_matrix":str(output/"patient_candidate_matrix.csv"),"patient_candidate_presence_matrix":str(output/"patient_candidate_presence_matrix.csv")}
     write_report(output,result,rows)
     return result
