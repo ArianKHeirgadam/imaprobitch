@@ -8,6 +8,7 @@ files only after explicit acquisition.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -20,12 +21,26 @@ class GDCIntakeError(RuntimeError):
 
 
 def _get_json(url: str, timeout: int = 20) -> dict:
-    request = Request(url, headers={"Accept": "application/json", "User-Agent": "WGR-CDP/1.1"})
-    try:
-        with urlopen(request, timeout=timeout) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except Exception as exc:
-        raise GDCIntakeError(f"GDC request failed: {type(exc).__name__}") from exc
+    last_exc = None
+    for attempt in range(3):
+        request = Request(
+            url,
+            headers={
+                "Accept": "application/json",
+                "Connection": "close",
+                "User-Agent": "WGR-CDP/1.4",
+            },
+        )
+        try:
+            with urlopen(request, timeout=timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except Exception as exc:
+            last_exc = exc
+            if attempt < 2:
+                time.sleep(1.0 * (attempt + 1))
+    raise GDCIntakeError(
+        f"GDC request failed after 3 attempts: {type(last_exc).__name__}"
+    ) from last_exc
 
 
 def fetch_project(project_id: str, timeout: int = 20) -> dict:
