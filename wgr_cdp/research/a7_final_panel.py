@@ -315,8 +315,10 @@ def write_final_panel(
     selected = set(result["panel"]["selected"])
     fields = [
         "rank", "selected", "candidate_id", "feature", "gene", "candidate_type",
-        "p_value", "q_value", "detectability", "blood_background_safety",
-        "early_stage_score", "specificity_score", "research_score", "score_status",
+        "p_value", "q_value", "detectability", "recurrence_prevalence",
+        "cfdna_suitability", "patient_coverage", "external_cancer_evidence",
+        "blood_background_safety", "early_stage_score", "specificity_score",
+        "research_score", "confidence", "score_status", "score_fields",
     ]
     with (output / "final_panel_candidates.csv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
@@ -366,6 +368,7 @@ def append_a7_to_report(output_dir, result):
         f"<li>Panel size: {int(panel.get('k', 0))}</li>"
         f"<li>Panel method: {html.escape(str(panel.get('method', 'not_run')))}</li>"
         f"<li>Patient coverage: {html.escape(str(coverage))}</li>"
+        f"<li>Selection objective: {html.escape(str(result.get('diagnostics', {}).get('selection_objective', 'Data unavailable')))}</li>"
         f"<li>Per-feature FPR budget: {html.escape(str(panel.get('alpha_per_feature', 'Data unavailable')))}</li></ul>"
         "<p>Machine-readable A7 artifacts: "
         "<code>final_panel.json</code>, <code>final_panel_candidates.csv</code>, "
