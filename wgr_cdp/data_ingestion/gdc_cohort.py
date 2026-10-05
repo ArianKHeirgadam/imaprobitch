@@ -102,7 +102,17 @@ def query_variant_files(project_id: str, *, access: str | None = None,
         for row in hits:
             category = str(row.get("data_category") or "").strip().lower()
             dtype = str(row.get("data_type") or "").strip().lower()
-            if category in {"simple nucleotide variation", "structural variation"} or "variant" in category or "mutation" in dtype:
+            if (
+                category in {
+                    "simple nucleotide variation",
+                    "structural variation",
+                    "copy number variation",
+                }
+                or "variant" in category
+                or "mutation" in dtype
+                or "copy number" in dtype
+                or "cnv" in dtype
+            ):
                 out.append(row)
         pagination = data.get("pagination") or {}
         total = pagination.get("total")
