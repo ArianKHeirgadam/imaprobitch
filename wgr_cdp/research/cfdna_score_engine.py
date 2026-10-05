@@ -16,6 +16,19 @@ def detectability_score(
     feature_type="SNV",
 ):
     """Return probability plus explicit assay-feasibility metadata."""
+    if tumor_fraction in (None, "") or depth in (None, ""):
+        return {
+            "tumor_fraction": tumor_fraction,
+            "depth": depth,
+            "region_size": max(1, int(region_size)),
+            "informative_sites": max(1, int(informative_sites)),
+            "copy_number": float(copy_number),
+            "error_rate": float(error_rate),
+            "blood_background": float(blood_background),
+            "feature_type": str(feature_type).upper(),
+            "detectability_score": "Data unavailable",
+            "assay_feasibility": "Data unavailable",
+        }
     probability = detectability_probability(
         tumor_fraction,
         depth=depth,
