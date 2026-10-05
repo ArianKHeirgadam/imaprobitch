@@ -280,8 +280,24 @@ def normalize_variant(record, reference=None, strict_reference=True):
     chrom = str(record["chrom"])
     pos = int(record["pos"])
     ref = str(record["ref"]).upper()
-    alt = str(record["alt"]).upper()
+    raw_alt = record["alt"]
 
+    # Preserve the original public helper contract when no reference is
+    # supplied: a multiallelic ALT list remains a list and only stable
+    # canonical casing/coordinate types are returned.
+    if reference is None:
+        if isinstance(raw_alt, (list, tuple)):
+            alt = [str(allele).upper() for allele in raw_alt]
+        else:
+            alt = str(raw_alt).upper()
+        return {
+            "chrom": chrom,
+            "pos": pos,
+            "ref": ref,
+            "alt": alt,
+        }
+
+    alt = str(raw_alt).upper()
     if pos < 1 or not ref or not alt:
         raise ValueError("Invalid variant coordinates or alleles")
 
@@ -293,11 +309,6 @@ def normalize_variant(record, reference=None, strict_reference=True):
         "alt": alt,
         "normalization_status": "reference_aware",
     })
-
-    if reference is None:
-        result["normalization_status"] = UNAVAILABLE
-        result["reference_validation"] = UNAVAILABLE
-        return result
 
     ref_chrom = _resolve_chrom(reference, chrom)
     if ref_chrom is None:
