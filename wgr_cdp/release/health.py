@@ -18,6 +18,8 @@ REQUIRED_COMPONENTS = {
     "A10 GDC/TCGA dataset intake and provenance",
     "A11 GDC acquisition, checksum verification and dataset registration",
     "A12 real GDC case-sample-file cohort construction",
+    "C-11 end-to-end integration and artifact contract",
+    "C-12 final scientific and reproducibility hardening",
 }
 
 
