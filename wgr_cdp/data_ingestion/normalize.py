@@ -11,6 +11,7 @@ The normalizer is dependency-free and intentionally conservative:
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
 
 
 UNAVAILABLE = "Data unavailable"
@@ -181,25 +182,28 @@ def _add_info(info, key, value):
     return ";".join(items)
 
 
+def _sha256(path, chunk_size=1024 * 1024):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(chunk_size), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def normalize_vcf(input_path, output_path, reference_fasta, reference_build="GRCh38"):
     """Normalize a dependency-free VCF with a FASTA reference."""
     from wgr_cdp.data_ingestion.vcf import read_vcf
 
     reference = read_fasta(reference_fasta)
     records = read_vcf(input_path)
-    outputs = []
+    expanded = []
     status_counts = {}
 
     for record in records:
         alts = record.get("alt") or []
-        for index, alt in enumerate(alts, start=1):
+        for alt in alts:
             normalized = normalize_variant(
-                record, reference=reference, strict_reference=True
-            )
-            normalized["alt"] = str(alt).upper()
-            # Re-run normalization because normalize_variant receives one ALT.
-            normalized = normalize_variant(
-                {**record, "alt": normalized["alt"]},
+                {**record, "alt": str(alt).upper()},
                 reference=reference,
                 strict_reference=True,
             )
@@ -219,13 +223,13 @@ def normalize_vcf(input_path, output_path, reference_fasta, reference_build="GRC
                 "WGR_ORIG",
                 f"{record['chrom']}:{int(record['pos'])}:{record['ref']}:{alt}",
             )
-            outputs.append(normalized)
+            expanded.append(normalized)
             status = normalized["normalization_status"]
             status_counts[status] = status_counts.get(status, 0) + 1
 
     # Deduplicate after normalization and sort deterministically.
     unique = {}
-    for row in outputs:
+    for row in expanded:
         key = (row["chrom"], row["pos"], row["ref"], row["alt"])
         unique[key] = row
     outputs = sorted(
@@ -283,9 +287,10 @@ def normalize_vcf(input_path, output_path, reference_fasta, reference_build="GRC
         "reference_fasta": str(reference_fasta),
         "reference_build": reference_build,
         "input_record_count": len(records),
-        "expanded_record_count": len(outputs),
+        "expanded_record_count": len(expanded),
         "deduplicated_record_count": len(outputs),
         "status_counts": status_counts,
+        "reference_fasta_sha256": _sha256(reference_fasta),
         "reference_mismatch_count": mismatch,
         "normalization_required": False,
     }
