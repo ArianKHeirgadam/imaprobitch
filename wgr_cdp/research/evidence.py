@@ -82,7 +82,10 @@ def normalize_evidence(candidate):
     }
     for key in EVIDENCE_FIELDS:
         value = aliases.get(key, row.get(key))
-        row[key] = _score(value) if value is not None else _UNAVAILABLE
+        # Normalize invalid/non-finite measurements to the explicit unavailable
+        # sentinel. Never leave None/NaN as if it were an observed value.
+        normalized = _score(value)
+        row[key] = normalized if normalized is not None else _UNAVAILABLE
     return row
 
 
