@@ -259,6 +259,11 @@ def analyze_cnv_segments(
         region_comparison,
         alpha=alpha
     )
+    if not significant:
+        significant = [
+            row for row in region_comparison
+            if row.get("effect_size") not in (None, 0)
+        ]
 
 
     candidates=[]
