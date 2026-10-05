@@ -103,10 +103,10 @@ def test_cnv_loss_and_segment_measurements(tmp_path):
     path = tmp_path / "cnv_loss.csv"
     rows_text = "sample_id,chromosome,start,end,copy_number,log2_ratio,group\n"
     rows_text += "".join(
-        f"C{i},9,100,500,1,-1.0,case\\n" for i in range(1, 11)
+        f"C{i},9,100,500,1,-1.0,case\n" for i in range(1, 11)
     )
     rows_text += "".join(
-        f"H{i},9,100,500,2,0.0,control\\n" for i in range(1, 11)
+        f"H{i},9,100,500,2,0.0,control\n" for i in range(1, 11)
     )
     path.write_text(rows_text, encoding="utf-8")
     rows = read_cnv_segments(path)
