@@ -89,8 +89,60 @@ def select_paired_tcga_cases(cohort_manifest, normal_preference=("NORMAL_SOLID",
         },
     }
 
-def select_open_variant_files(variant_files, *, modality="SNV_INDEL", strategy="WXS"):
+def _file_case_ids(row):
+    cases = row.get("cases")
+    if isinstance(cases, dict):
+        cases = [cases]
+    if not isinstance(cases, list):
+        cases = []
+    ids = set()
+    for case in cases:
+        if not isinstance(case, dict):
+            continue
+        for key in ("case_id", "submitter_id"):
+            value = case.get(key)
+            if value:
+                ids.add(str(value))
+    for key in ("case_id", "submitter_id"):
+        value = row.get(key)
+        if value:
+            ids.add(str(value))
+    return ids
+
+def select_variant_files(variant_files, *, modality="SNV_INDEL",
+                         access=None, strategy=None, case_ids=None):
     selected = []
+    wanted_cases = {str(x) for x in (case_ids or [])}
+    for row in variant_files or []:
+        row_access = str(row.get("access") or "").lower()
+        if access and row_access != str(access).lower():
+            continue
+        experimental = str(row.get("experimental_strategy") or "").upper()
+        if strategy and experimental and experimental != str(strategy).upper():
+            continue
+        category = str(row.get("data_category") or "").lower()
+        data_type = str(row.get("data_type") or "").lower()
+        fmt = str(row.get("data_format") or "").upper()
+        text = " ".join((category, data_type, fmt))
+        if modality == "SNV_INDEL":
+            if "mutation" not in text and fmt not in {"MAF", "VCF"}:
+                continue
+        elif modality == "CNV":
+            if "copy number" not in text and "cnv" not in text:
+                continue
+        else:
+            continue
+        if wanted_cases and not (wanted_cases & _file_case_ids(row)):
+            continue
+        selected.append(dict(row))
+    selected.sort(key=lambda r: (str(r.get("file_name", "")), str(r.get("file_id", ""))))
+    return selected
+
+def select_open_variant_files(variant_files, *, modality="SNV_INDEL", strategy="WXS"):
+    return select_variant_files(
+        variant_files, modality=modality, access="open", strategy=strategy
+    )
+
     for row in variant_files or []:
         access = str(row.get("access") or "").lower()
         experimental = str(row.get("experimental_strategy") or "").upper()
