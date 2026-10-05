@@ -34,6 +34,8 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         "validation_candidates": str(validation_candidates) if validation_candidates else None,
         "bootstrap": bootstrap, "background": str(background) if background else None,
         "max_background": max_background,
+        "robustness_seed": 42,
+        "robustness_missingness_repeats": 10,
     }
     run_record = create_run_record(run_config)
     result=analyze_cohorts(healthy,cancer,output,annotate=annotate,alpha=alpha,timeout=timeout)
@@ -148,6 +150,20 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     )
     write_a8_artifacts(output, result["a8"])
     append_a8_to_report(output, result["a8"])
+
+    from wgr_cdp.research.robustness import write_c09_artifacts
+    result["c09"] = write_c09_artifacts(
+        output,
+        a5_candidates,
+        base_weights=DEFAULT_WEIGHTS,
+        constraints={"min_detectability": 0.0, "max_background": max_background},
+        matrix=matrix,
+        k_values=tuple(range(1, min(15, int(max_panel_size)) + 1)),
+        missingness_repeats=10,
+        min_gain=0.02,
+        seed=42,
+        k=min(15, int(max_panel_size)),
+    )
 
     with (Path(output) / "a6_ablation.csv").open("w", encoding="utf-8", newline="") as h:
         fields=["ablation","k","coverage","ineligible","unscored"]
