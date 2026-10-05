@@ -50,6 +50,8 @@ def ilp_panel(matrix,max_k=15,min_gain=0,max_candidates=22):
     """Exact binary optimization fallback; external ILP solvers may replace this for large spaces."""
     max_k = min(15, max(0, int(max_k)))
     min_gain = max(0.0, float(min_gain))
+    max_k = min(15, max(0, int(max_k)))
+    min_gain = max(0.0, float(min_gain))
     candidates=sorted({c for row in matrix.values() for c in row})
     if len(candidates)>max_candidates:
         return {"method":"exact_0_1","status":"not_run","reason":"too_many_candidates","selected":[],"coverage":0.0,"k":0}
