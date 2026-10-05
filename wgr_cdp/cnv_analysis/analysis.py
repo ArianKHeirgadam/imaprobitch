@@ -5,6 +5,8 @@ from pathlib import Path
 
 from wgr_cdp.cohort_analysis.statistics import fisher_exact_2x2
 from wgr_cdp.evaluation.multiple_testing import add_fdr, filter_significant
+from wgr_cdp.research.cnv_statistics import describe_cnv_statistics
+from wgr_cdp.research.statistics import benjamini_hochberg
 
 
 def _write_csv(path, rows, fields):
@@ -147,9 +149,12 @@ def _compare(rows, key_name="region"):
             and (r.get("log2_ratio") not in (None, "") or r.get("segment_mean") not in (None, ""))
         ]
 
+        dosage_stats = describe_cnv_statistics(case_values, control_values, permutations=999, seed=42)
         results.append({
             "feature": feature,
             "event_type": event,
+            "statistical_method": "Fisher exact test on explicit event carrier status",
+            "dosage_statistical_method": dosage_stats["statistical_test"],
             "case_carriers": a,
             "control_carriers": b,
             "case_n": case_n,
@@ -167,10 +172,23 @@ def _compare(rows, key_name="region"):
             ),
             "case_mean_log2": sum(case_values) / len(case_values) if case_values else None,
             "control_mean_log2": sum(control_values) / len(control_values) if control_values else None,
+            "dosage_mean_difference": dosage_stats["mean_difference"],
+            "dosage_effect_size": dosage_stats["effect_size"],
+            "dosage_p_value": dosage_stats["p_value"],
             "p_value": fisher_exact_2x2(a, b, c_count, d_count) if case_n and control_n else 1.0,
         })
 
-    return add_fdr(results)
+    results = add_fdr(results)
+    dosage_p = [row["dosage_p_value"] for row in results if row.get("dosage_p_value") is not None]
+    dosage_q = benjamini_hochberg(dosage_p) if dosage_p else []
+    index = 0
+    for row in results:
+        if row.get("dosage_p_value") is not None:
+            row["dosage_q_value"] = dosage_q[index]
+            index += 1
+        else:
+            row["dosage_q_value"] = None
+    return results
 
 def _score(row):
 
@@ -282,6 +300,8 @@ def analyze_cnv_segments(
             "case_n", "control_n", "case_observed", "control_observed",
             "case_frequency", "control_frequency", "frequency_difference",
             "effect_size", "direction", "case_mean_log2", "control_mean_log2",
+            "dosage_mean_difference", "dosage_effect_size", "dosage_p_value",
+            "dosage_q_value", "statistical_method", "dosage_statistical_method",
             "p_value", "q_value"
         ]
     )
