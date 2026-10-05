@@ -389,3 +389,72 @@ def register_command(manifest_path, root, output):
     result = register_dataset(manifest, root)
     result["output"] = str(write_registration(output, result))
     return result
+
+
+def data_plan_command(output, healthy_samples=250, include_gtex=True):
+    from wgr_cdp.data_ingestion.reference_sources import build_data_plan, write_data_plan
+    plan = build_data_plan(
+        healthy_target_samples=healthy_samples,
+        include_gtex=include_gtex,
+    )
+    path = write_data_plan(output, plan)
+    plan["output"] = str(path)
+    return plan
+
+
+def one_kg_manifest_command(output, samples=250, chromosomes=None):
+    from wgr_cdp.data_ingestion.reference_sources import one_kg_urls, ONE_KG_SAMPLE_PANEL
+    chroms = tuple(chromosomes.split(",")) if chromosomes else None
+    payload = {
+        "schema_version": "A12-1KG-MANIFEST",
+        "source": "1000 Genomes 30x",
+        "access": "public",
+        "genome_build": "GRCh38",
+        "target_samples": int(samples),
+        "sample_panel_url": ONE_KG_SAMPLE_PANEL,
+        "files": one_kg_urls(chroms),
+        "selection_note": (
+            "Sample selection is deferred to a deterministic sample-list step; "
+            "do not assume the first N VCF columns are population-balanced."
+        ),
+    }
+    path = Path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    payload["output"] = str(path)
+    return payload
+
+
+def reference_acquire_command(manifest_path, output_dir, limit=None, timeout=60):
+    from wgr_cdp.data_ingestion.reference_sources import download_url
+    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    files = manifest.get("files") or []
+    if limit is not None:
+        files = files[:int(limit)]
+    results = []
+    for item in files:
+        name = Path(item["url"].split("/")[-1]).name
+        result = download_url(item["url"], Path(output_dir) / name, timeout=timeout)
+        result["url"] = item["url"]
+        result["chromosome"] = item.get("chromosome")
+        results.append(result)
+        index_url = item.get("index_url")
+        if index_url:
+            index_name = Path(index_url.split("/")[-1]).name
+            index_result = download_url(index_url, Path(output_dir) / index_name, timeout=timeout)
+            index_result["url"] = index_url
+            index_result["chromosome"] = item.get("chromosome")
+            results.append(index_result)
+    manifest["results"] = results
+    manifest["acquisition_status"] = (
+        "PASS" if results and all(r["status"] in {"PASS", "EXISTS"} for r in results)
+        else "Data unavailable" if not results
+        else "CONDITIONAL"
+    )
+    Path(manifest_path).write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    return manifest
+
+
+def maf_to_vcf_command(input_path, output_dir):
+    from wgr_cdp.data_ingestion.maf import convert_maf_to_vcf
+    return convert_maf_to_vcf(input_path, output_dir)
