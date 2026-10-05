@@ -1,6 +1,11 @@
 from pathlib import Path
 
-from wgr_cdp.data_ingestion.normalize import (\n    IndexedFastaReference,\n    normalize_variant,\n    normalize_vcf,\n    read_fasta,\n)
+from wgr_cdp.data_ingestion.normalize import (
+    IndexedFastaReference,
+    normalize_variant,
+    normalize_vcf,
+    read_fasta,
+)
 
 
 def test_left_align_insertion_through_repeat():
