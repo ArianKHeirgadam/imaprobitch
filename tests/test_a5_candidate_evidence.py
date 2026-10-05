@@ -49,3 +49,45 @@ def test_sensitivity():
     assert sum(normalize_weights({"detectability":.5,"specificity_score":.5}).values())==1
     results=weight_sensitivity(rows,{"detectability":.5,"specificity_score":.5},[("detectability-heavy",{"detectability":2,"specificity_score":1}),("specificity-heavy",{"detectability":1,"specificity_score":2})])
     assert len(results)==2 and selection_stability(results)["n_scenarios"]==2
+
+
+def test_non_finite_evidence_is_unavailable_not_clamped():
+    result = normalize_evidence(candidate("A", detectability=float("nan")))
+    assert result["detectability"] == "Data unavailable"
+
+
+def test_invalid_weights_are_rejected():
+    import pytest
+
+    with pytest.raises(ValueError, match="finite non-negative"):
+        transparent_weighted_score(candidate("A"), {"detectability": -1})
+    with pytest.raises(ValueError, match="finite non-negative"):
+        transparent_weighted_score(candidate("A"), {"detectability": float("inf")})
+
+
+def test_string_false_hard_constraints_are_not_truthy():
+    result = rank_candidates(
+        [candidate("A", constraints={"assay_ok": "false", "fpr_ok": "true"})],
+        {"detectability": 1},
+    )
+    assert result["ranked"] == []
+    assert result["ineligible"][0]["constraints"]["assay_ok"] is False
+
+
+def test_ranking_buckets_are_disjoint_and_duplicate_ids_audited():
+    result = rank_candidates(
+        [
+            candidate("A"),
+            candidate("B", detectability=0.1),
+            candidate("C", detectability="Data unavailable"),
+            candidate("A", specificity_score=0.5),
+        ],
+        {"detectability": 1},
+        {"min_detectability": 0.5},
+    )
+    assert result["audit"]["candidate_count"] == 4
+    assert result["audit"]["ranked_count"] == 2
+    assert result["audit"]["ineligible_count"] == 1
+    assert result["audit"]["unscored_count"] == 1
+    assert result["audit"]["duplicate_candidate_ids"] == ["A"]
+    assert result["audit"]["buckets_disjoint"] is True
