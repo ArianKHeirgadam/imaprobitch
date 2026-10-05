@@ -26,7 +26,9 @@ def normalize_weights(weights):
             "biological_evidence", "statistical_strength", "detectability",
             "blood_background_safety", "early_stage_score", "specificity_score",
             "literature_novelty", "literature_validation_gap",
-            "literature_diagnostic_utility",
+            "literature_diagnostic_utility", "recurrence_prevalence",
+            "cfdna_suitability", "patient_coverage",
+            "external_cancer_evidence",
         }:
             raise ValueError(f"Unknown evidence weight field: {normalized_key!r}")
         normalized[normalized_key] = number
