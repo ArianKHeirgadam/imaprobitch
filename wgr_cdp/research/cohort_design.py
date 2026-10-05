@@ -1,7 +1,5 @@
 """C-12.4: explicit cohort design, batch and confounder metadata audit."""
 from __future__ import annotations
-from collections import defaultdict
-
 UNAVAILABLE = "Data unavailable"
 
 DESIGN_FIELDS = (
@@ -106,13 +104,33 @@ def confounding_status(rows):
     return {"status": "Available", "fields": warnings}
 
 
+def merge_design_metadata(samples, metadata_rows):
+    """Merge explicit sample-level design metadata without guessing missing values."""
+    lookup = {}
+    for row in metadata_rows or []:
+        key = row.get("sample_id") or row.get("patient") or row.get("sample")
+        if key not in (None, ""):
+            lookup[str(key)] = dict(row)
+    merged = []
+    for sample in samples or []:
+        item = dict(sample)
+        key = str(item.get("sample_id") or item.get("patient") or "")
+        if key and key in lookup:
+            for field in DESIGN_FIELDS:
+                value = _value(lookup[key], field)
+                if value not in (None, ""):
+                    item[field] = value
+        merged.append(item)
+    return merged
+
+
 def validate_cohort_design(rows):
     summary = summarize_cohort_design(rows)
     field_status = {item["field"]: item["status"] for item in summary["confounding_status"]["fields"]}
-    hard_fail = [f for f, status in field_status.items() if status == "Potential_confounding"]
+    potential = [f for f, status in field_status.items() if status == "Potential_confounding"]
     return {
-        "status": "FAIL" if hard_fail else summary["status"],
-        "potential_confounders": hard_fail,
+        "status": "REVIEW" if potential else summary["status"],
+        "potential_confounders": potential,
         "summary": summary,
         "scientific_boundary": (
             "A detected metadata imbalance is a review flag, not a claim that "
