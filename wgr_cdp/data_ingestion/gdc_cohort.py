@@ -19,6 +19,7 @@ def _post_json(endpoint: str, payload: dict, timeout: int = 30) -> dict:
     body = json.dumps(payload).encode("utf-8")
     url = f"{GDC_API}/{endpoint.lstrip('/')}"
     last_exc = None
+    post_timeout = max(5, min(int(timeout), 10))
     for attempt in range(3):
         request = Request(
             url,
@@ -32,16 +33,20 @@ def _post_json(endpoint: str, payload: dict, timeout: int = 30) -> dict:
             method="POST",
         )
         try:
-            with urlopen(request, timeout=timeout) as response:
+            with urlopen(request, timeout=post_timeout) as response:
                 return json.loads(response.read().decode("utf-8"))
         except Exception as exc:
             last_exc = exc
             if attempt < 2:
                 time.sleep(1.0 * (attempt + 1))
-    raise GDCIntakeError(
-        f"GDC cohort query failed after 3 attempts: {type(last_exc).__name__}"
-    ) from last_exc
 
+    try:
+        return _get_json(endpoint, payload, timeout=timeout)
+    except Exception as fallback_exc:
+        raise GDCIntakeError(
+            "GDC cohort query failed via POST and GET fallback: "
+            f"POST={type(last_exc).__name__}, GET={type(fallback_exc).__name__}"
+        ) from fallback_exc
 
 
 def _get_json(endpoint: str, params: dict, timeout: int = 30) -> dict:
@@ -87,17 +92,14 @@ def query_cases(project_id: str, *, size: int = 5000, timeout: int = 30) -> list
     out = []
     offset = 0
     while True:
-        response = _get_json(
-            "cases",
-            {
-                "filters": filters,
-                "fields": fields,
-                "format": "JSON",
-                "size": size,
-                "from": offset,
-            },
-            timeout=timeout,
-        )
+        payload = {
+            "filters": filters,
+            "fields": fields,
+            "format": "JSON",
+            "size": size,
+            "from": offset,
+        }
+        response = _post_json("cases", payload, timeout=timeout)
         data = response.get("data") or {}
         hits = data.get("hits") if isinstance(data.get("hits"), list) else []
         out.extend(hits)
@@ -106,7 +108,6 @@ def query_cases(project_id: str, *, size: int = 5000, timeout: int = 30) -> list
         if not hits or total is None or (isinstance(total, int) and offset + len(hits) >= total):
             return out
         offset += len(hits)
-
 
 def query_variant_files(project_id: str, *, access: str | None = None,
                         size: int = 5000, timeout: int = 30) -> list[dict]:
@@ -132,17 +133,14 @@ def query_variant_files(project_id: str, *, access: str | None = None,
     out = []
     offset = 0
     while True:
-        response = _get_json(
-            "files",
-            {
-                "filters": filters,
-                "fields": fields,
-                "format": "JSON",
-                "size": size,
-                "from": offset,
-            },
-            timeout=timeout,
-        )
+        payload = {
+            "filters": filters,
+            "fields": fields,
+            "format": "JSON",
+            "size": size,
+            "from": offset,
+        }
+        response = _post_json("files", payload, timeout=timeout)
         data = response.get("data") or {}
         hits = data.get("hits") if isinstance(data.get("hits"), list) else []
         for row in hits:
@@ -165,7 +163,6 @@ def query_variant_files(project_id: str, *, access: str | None = None,
         if not hits or total is None or (isinstance(total, int) and offset + len(hits) >= total):
             return out
         offset += len(hits)
-
 
 def _sample_rows(case: dict) -> list[dict]:
     samples = case.get("samples") if isinstance(case.get("samples"), list) else []
