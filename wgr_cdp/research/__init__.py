@@ -24,9 +24,24 @@ __all__ = [
     "stage_candidate_rates","early_stage_score","specificity_rates","specificity_score",
     "normalize_weights","weight_sensitivity","selection_stability","estimate_background","build_pon","annotate_pon","filter_candidates",
     "C11_SCHEMA_VERSION","audit_run_artifacts","build_c11_manifest","write_c11_artifacts","append_c11_to_report",
+    "build_cfdna_suitability","augment_candidate","recurrence_prevalence",
+    "build_presence_matrix","panel_presence_coverage","greedy_presence_panel","exact_presence_panel",
+    "describe_cnv_statistics","permutation_mean_p_value",
+    "summarize_cohort_design","validate_cohort_design","merge_design_metadata",
+    "evidence_hierarchy","classify_external_evidence","evidence_strength_confidence",
+    "compare_frozen_panel_coverage","build_presence_matrix_from_rows",
+    "audit_c12","write_c12_final_audit","append_c12_final_audit",
 ]
 from .a5_integration import write_a5_artifacts, DEFAULT_WEIGHTS
 from .a6_validation import run_a6, conventional_feature_ranking, bootstrap_rank_stability
 from .a8_validation import run_a8, audit_cohort_leakage, revalidate_selected
 from .robustness import k_sensitivity, missingness_stress, ranking_robustness, run_c09_robustness, threshold_sensitivity, write_c09_artifacts
 from .c11_integration import SCHEMA_VERSION as C11_SCHEMA_VERSION, audit_run_artifacts, build_c11_manifest, write_c11_artifacts, append_c11_to_report
+from .cfdna_prioritization import build_cfdna_suitability, augment_candidate, recurrence_prevalence
+from .patient_coverage import build_presence_matrix, panel_presence_coverage, greedy_presence_panel, exact_presence_panel
+from .cnv_statistics import describe_cnv_statistics, permutation_mean_p_value
+from .cohort_design import summarize_cohort_design, validate_cohort_design, merge_design_metadata
+from .external_evidence import evidence_hierarchy, classify_external_evidence
+from .confidence import evidence_strength_confidence
+from .validation_coverage import compare_frozen_panel_coverage, build_presence_matrix_from_rows
+from .c12_final_audit import audit_c12, write_c12_final_audit, append_c12_final_audit
