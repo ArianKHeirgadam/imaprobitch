@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from .gdc import GDC_API, GDCIntakeError
@@ -42,6 +43,35 @@ def _post_json(endpoint: str, payload: dict, timeout: int = 30) -> dict:
     ) from last_exc
 
 
+
+def _get_json(endpoint: str, params: dict, timeout: int = 30) -> dict:
+    query = urlencode({
+        key: json.dumps(value, separators=(",", ":")) if isinstance(value, (dict, list)) else value
+        for key, value in params.items()
+    })
+    url = f"{GDC_API}/{endpoint.lstrip('/')}?{query}"
+    last_exc = None
+    for attempt in range(3):
+        request = Request(
+            url,
+            headers={
+                "Accept": "application/json",
+                "Connection": "close",
+                "User-Agent": "WGR-CDP/1.4",
+            },
+            method="GET",
+        )
+        try:
+            with urlopen(request, timeout=timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except Exception as exc:
+            last_exc = exc
+            if attempt < 2:
+                time.sleep(1.0 * (attempt + 1))
+    raise GDCIntakeError(
+        f"GDC cohort GET query failed after 3 attempts: {type(last_exc).__name__}"
+    ) from last_exc
+
 def query_cases(project_id: str, *, size: int = 5000, timeout: int = 30) -> list[dict]:
     if size < 1 or size > 5000:
         raise ValueError("size must be between 1 and 5000")
@@ -57,9 +87,17 @@ def query_cases(project_id: str, *, size: int = 5000, timeout: int = 30) -> list
     out = []
     offset = 0
     while True:
-        payload = {"filters": filters, "fields": fields, "format": "JSON",
-                   "size": size, "from": offset}
-        response = _post_json("cases", payload, timeout=timeout)
+        response = _get_json(
+            "cases",
+            {
+                "filters": filters,
+                "fields": fields,
+                "format": "JSON",
+                "size": size,
+                "from": offset,
+            },
+            timeout=timeout,
+        )
         data = response.get("data") or {}
         hits = data.get("hits") if isinstance(data.get("hits"), list) else []
         out.extend(hits)
@@ -94,9 +132,17 @@ def query_variant_files(project_id: str, *, access: str | None = None,
     out = []
     offset = 0
     while True:
-        payload = {"filters": filters, "fields": fields, "format": "JSON",
-                   "size": size, "from": offset}
-        response = _post_json("files", payload, timeout=timeout)
+        response = _get_json(
+            "files",
+            {
+                "filters": filters,
+                "fields": fields,
+                "format": "JSON",
+                "size": size,
+                "from": offset,
+            },
+            timeout=timeout,
+        )
         data = response.get("data") or {}
         hits = data.get("hits") if isinstance(data.get("hits"), list) else []
         for row in hits:
