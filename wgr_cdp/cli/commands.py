@@ -24,7 +24,7 @@ def _integrate_candidates(output, snv_candidates, cnv_candidates):
     with (path/"integrated_candidates.csv").open("w",encoding="utf-8",newline="") as h:
         w=csv.DictWriter(h,fieldnames=fields); w.writeheader(); w.writerows(rows)
 
-def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,features=None,metadata=None,max_panel_size=15,depth=300,error_rate=0.001,cnv=None,literature_search=False,validation_candidates=None,bootstrap=200):
+def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,features=None,metadata=None,max_panel_size=15,depth=300,error_rate=0.001,cnv=None,literature_search=False,validation_candidates=None,bootstrap=200,background=None,max_background=1.0):
     run_config = {
         "healthy": str(healthy), "cancer": str(cancer), "alpha": alpha,
         "timeout": timeout, "features": str(features) if features else None,
@@ -32,7 +32,8 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         "depth": depth, "error_rate": error_rate,
         "literature_search": literature_search,
         "validation_candidates": str(validation_candidates) if validation_candidates else None,
-        "bootstrap": bootstrap,
+        "bootstrap": bootstrap, "background": str(background) if background else None,
+        "max_background": max_background,
     }
     run_record = create_run_record(run_config)
     result=analyze_cohorts(healthy,cancer,output,annotate=annotate,alpha=alpha,timeout=timeout)
@@ -54,11 +55,36 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         from wgr_cdp.research.a7_final_panel import load_multimodal_evidence, multimodal_to_candidates
         mm_rows=load_multimodal_evidence(Path(output)/"multimodal"/"multimodal_cohort_comparison.csv")
         a5_candidates.extend(multimodal_to_candidates(mm_rows))
+    if background:
+        from wgr_cdp.research.blood_background import estimate_background, build_pon, annotate_pon
+        background_path = Path(background)
+        with background_path.open(encoding="utf-8-sig", newline="") as h:
+            background_rows = list(csv.DictReader(h))
+        background_estimate = estimate_background(background_rows)
+        pon = build_pon(background_rows)
+        background_dir = Path(output) / "blood_background"
+        background_dir.mkdir(parents=True, exist_ok=True)
+        (background_dir / "background_estimate.json").write_text(
+            json.dumps(background_estimate, indent=2, default=str), encoding="utf-8"
+        )
+        (background_dir / "panel_of_normals.json").write_text(
+            json.dumps(pon, indent=2, default=str), encoding="utf-8"
+        )
+        a5_candidates = annotate_pon(a5_candidates, pon, key="region")
+        for row in a5_candidates:
+            key = str(row.get("region") or row.get("feature") or "")
+            source_data = background_estimate.get(key, {})
+            values = [item.get("max") for item in source_data.values() if isinstance(item, dict) and item.get("max") is not None]
+            bg = max(values) if values else None
+            row["blood_background_max"] = bg
+            row["blood_background_safety"] = "Data unavailable" if bg is None else max(0.0, min(1.0, 1.0 - bg))
+            row["blood_background_status"] = "Data unavailable" if bg is None else ("pass" if bg <= max_background else "fail")
+
     result["a5"]=write_a5_artifacts(
         output,
         a5_candidates,
         weights=None,
-        constraints={"min_detectability":0.0,"max_background":1.0},
+        constraints={"min_detectability":0.0,"max_background":max_background},
         literature_search=literature_search,
     )
     from wgr_cdp.research.a5_integration import append_a5_to_report
@@ -82,7 +108,7 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
             validation_rows = list(csv.DictReader(h))
     result["a6"] = run_a6(
         a5_candidates, DEFAULT_WEIGHTS,
-        constraints={"min_detectability":0.0,"max_background":1.0},
+        constraints={"min_detectability":0.0,"max_background":max_background},
         matrix=matrix, k=max_panel_size,
         n_bootstrap=bootstrap, validation_candidates=validation_rows,
     )
@@ -104,7 +130,7 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
     result["a7"] = write_final_panel(
         output, a5_candidates, matrix=matrix, max_k=min(15, max_panel_size),
         fpr_target=alpha,
-        constraints={"min_detectability":0.0,"max_background":1.0},
+        constraints={"min_detectability":0.0,"max_background":max_background},
         min_gain=0.02,
         bootstrap=200,
         candidate_layers=candidate_layers,
