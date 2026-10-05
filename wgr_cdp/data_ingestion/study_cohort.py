@@ -1,0 +1,121 @@
+"""Study-level TCGA cohort selection for Cancer-vs-Normal analysis.
+
+The selector works at case/sample level and distinguishes paired non-tumor
+samples from unrelated population references. It never calls a TCGA normal
+sample an independent healthy population.
+"""
+from __future__ import annotations
+
+from collections import defaultdict
+from dataclasses import asdict
+from pathlib import Path
+import json
+
+UNAVAILABLE = "Data unavailable"
+
+def _sample_class(sample):
+    sample_type = str(sample.get("sample_type") or "").strip().lower()
+    tissue_type = str(sample.get("tissue_type") or "").strip().lower()
+    descriptor = str(sample.get("tumor_descriptor") or "").strip().lower()
+    if sample_type == "primary tumor" or "primary tumor" in sample_type:
+        return "TUMOR"
+    if sample_type == "recurrent tumor" or "recurrent tumor" in sample_type:
+        return "TUMOR"
+    if sample_type == "solid tissue normal" or "solid tissue normal" in sample_type:
+        return "NORMAL_SOLID"
+    if tissue_type == "normal":
+        return "NORMAL_SOLID"
+    if sample_type == "blood derived normal" or "blood derived normal" in sample_type:
+        return "NORMAL_BLOOD"
+    if "tumor" in descriptor:
+        return "TUMOR"
+    return "UNCLASSIFIED"
+
+def select_paired_tcga_cases(cohort_manifest, normal_preference=("NORMAL_SOLID", "NORMAL_BLOOD")):
+    samples = cohort_manifest.get("samples") or []
+    by_case = defaultdict(list)
+    for sample in samples:
+        case = str(sample.get("case_id") or "")
+        if case:
+            item = dict(sample)
+            item["selected_class"] = _sample_class(item)
+            by_case[case].append(item)
+
+    selected = []
+    excluded = []
+    for case_id, case_samples in sorted(by_case.items()):
+        tumors = [s for s in case_samples if s["selected_class"] == "TUMOR"]
+        normals = [s for s in case_samples if s["selected_class"] in normal_preference]
+        if not tumors or not normals:
+            excluded.append({
+                "case_id": case_id,
+                "reason": "no_explicit_tumor_normal_pair",
+                "tumor_count": len(tumors),
+                "normal_count": len(normals),
+            })
+            continue
+        tumor = sorted(tumors, key=lambda s: str(s.get("sample_id", "")))[0]
+        normal_rank = {
+            kind: index for index, kind in enumerate(normal_preference)
+        }
+        normal = sorted(
+            normals,
+            key=lambda s: (
+                normal_rank.get(s["selected_class"], 999),
+                str(s.get("sample_id", "")),
+            ),
+        )[0]
+        selected.append({
+            "case_id": case_id,
+            "tumor_sample": tumor,
+            "normal_sample": normal,
+            "pair_status": "PAIRED",
+        })
+
+    return {
+        "schema_version": "A12-STUDY-COHORT-1",
+        "status": "Available" if selected else UNAVAILABLE,
+        "source_project": cohort_manifest.get("project_id", UNAVAILABLE),
+        "selection_rule": (
+            "Select cases with one explicit tumor sample and one explicit normal "
+            "sample from the same case; prefer solid-tissue normal over blood-derived normal."
+        ),
+        "selected_pair_count": len(selected),
+        "selected": selected,
+        "excluded_cases": excluded,
+        "scientific_roles": {
+            "tumor": "Cancer discovery cohort",
+            "normal": "Paired non-tumor comparator, not an independent healthy population",
+        },
+    }
+
+def select_open_variant_files(variant_files, *, modality="SNV_INDEL", strategy="WXS"):
+    selected = []
+    for row in variant_files or []:
+        access = str(row.get("access") or "").lower()
+        experimental = str(row.get("experimental_strategy") or "").upper()
+        category = str(row.get("data_category") or "").lower()
+        data_type = str(row.get("data_type") or "").lower()
+        fmt = str(row.get("data_format") or "").upper()
+        text = " ".join((category, data_type, fmt))
+        if access != "open":
+            continue
+        if modality == "SNV_INDEL":
+            if "mutation" not in text and fmt not in {"MAF", "VCF"}:
+                continue
+            if strategy and experimental and experimental != strategy.upper():
+                continue
+        elif modality == "CNV":
+            if "copy number" not in text and "cnv" not in text:
+                continue
+        else:
+            continue
+        selected.append(dict(row))
+    selected.sort(key=lambda r: (str(r.get("file_name", "")), str(r.get("file_id", ""))))
+    return selected
+
+def write_study_selection(path, selection):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(selection, indent=2, sort_keys=True), encoding="utf-8")
+    return path
