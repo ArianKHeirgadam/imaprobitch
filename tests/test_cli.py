@@ -19,3 +19,14 @@ def test_cli_commands():
 def test_unknown_cli_command():
     with pytest.raises(ValueError):
         execute("unknown")
+
+
+def test_cli_accepts_blood_background_and_max_background():
+    from wgr_cdp.cli.main import build_parser
+    args = build_parser().parse_args([
+        "run", "--healthy", "healthy.vcf", "--cancer", "cancer.vcf",
+        "--output", "results", "--background", "background.csv",
+        "--max-background", "0.10",
+    ])
+    assert args.background == "background.csv"
+    assert args.max_background == 0.10
