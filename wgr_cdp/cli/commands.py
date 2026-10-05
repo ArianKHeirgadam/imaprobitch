@@ -485,3 +485,11 @@ def one_kg_select_command(panel_path, output, samples=250):
         "output": str(path),
     }
     return result
+
+def one_kg_subset_command(input_path, sample_list, output_path):
+    from wgr_cdp.data_ingestion.reference_sources import subset_vcf_samples
+    ids = [
+        line.strip() for line in Path(sample_list).read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    return subset_vcf_samples(input_path, output_path, ids)
