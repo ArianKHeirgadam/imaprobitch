@@ -208,6 +208,8 @@ def build_final_panel(
         restricted_presence, effective_k, min_gain=min_gain
     )
     optimization = presence_optimization if presence_optimization.get("status") == "Available" else probability_optimization
+    if optimization.get("status") == "Available":
+        optimization["alpha_per_feature"] = alpha_budget(fpr_target, max(1, int(optimization.get("k", 0))))
 
     diagnostics = {
         "coverage_curve": coverage_curve(restricted, effective_k, min_gain=min_gain) if restricted else "Data unavailable",
@@ -273,6 +275,7 @@ def write_final_panel(
     output_dir,
     candidates,
     matrix=None,
+    presence_matrix=None,
     max_k=15,
     fpr_target=0.05,
     weights=None,
