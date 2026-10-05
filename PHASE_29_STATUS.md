@@ -33,4 +33,4 @@ Add real CNV segment ingestion and Cancer-vs-Healthy CNV comparison without inve
 - [x] FDR correction
 - [x] Real output artifacts
 - [x] Tests
-- [ ] CLI integration remains to be completed in this phase
+- [x] CLI integration via `wgr-cdp run --cnv ...`
