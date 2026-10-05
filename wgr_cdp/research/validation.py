@@ -429,3 +429,70 @@ def evaluate_with_frozen_threshold(rows, fitted, score_key="score"):
     return evaluate_binary_predictions(
         rows, score_key=score_key, threshold=float(fitted["threshold"])
     )
+
+
+def run_c04_evaluation(
+    discovery_rows,
+    validation_rows=None,
+    test_rows=None,
+    score_key="score",
+    threshold_objective="f1",
+):
+    """Run the fit-on-discovery/evaluate-on-holdouts C-04 contract.
+
+    Patient overlap across discovery, validation, and test is a hard failure.
+    Threshold fitting uses discovery rows only. Validation/test rows are never
+    used to refit that threshold.
+    """
+    discovery_rows = list(discovery_rows or [])
+    validation_rows = None if validation_rows is None else list(validation_rows)
+    test_rows = None if test_rows is None else list(test_rows)
+
+    discovery_ids = {_row_patient(row) for row in discovery_rows if _row_patient(row)}
+    validation_ids = (
+        {_row_patient(row) for row in validation_rows if _row_patient(row)}
+        if validation_rows is not None else set()
+    )
+    test_ids = (
+        {_row_patient(row) for row in test_rows if _row_patient(row)}
+        if test_rows is not None else set()
+    )
+
+    overlaps = {
+        "discovery__validation": sorted(discovery_ids & validation_ids),
+        "discovery__test": sorted(discovery_ids & test_ids),
+        "validation__test": sorted(validation_ids & test_ids),
+    }
+    overlaps = {key: value for key, value in overlaps.items() if value}
+    if overlaps:
+        return {
+            "status": "FAIL",
+            "leakage_free": False,
+            "overlaps": overlaps,
+            "threshold_fit": {"status": "Data unavailable", "threshold": None},
+            "validation": {"status": "Data unavailable"},
+            "test": {"status": "Data unavailable"},
+        }
+
+    fitted = fit_binary_threshold(
+        discovery_rows, score_key=score_key, objective=threshold_objective
+    )
+    validation_result = (
+        evaluate_with_frozen_threshold(validation_rows, fitted, score_key)
+        if validation_rows is not None
+        else {"status": "Data unavailable", "metrics": {}}
+    )
+    test_result = (
+        evaluate_with_frozen_threshold(test_rows, fitted, score_key)
+        if test_rows is not None
+        else {"status": "Data unavailable", "metrics": {}}
+    )
+
+    return {
+        "status": "Available" if fitted["status"] == "Available" else "Data unavailable",
+        "leakage_free": True,
+        "overlaps": {},
+        "threshold_fit": fitted,
+        "validation": validation_result,
+        "test": test_result,
+    }
