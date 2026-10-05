@@ -28,7 +28,7 @@ def test_a5_hard_constraint_excludes_candidate(tmp_path):
     assert result["ineligible_count"] == 1
 
 
-def test_restrictive_background_ceiling_requires_observed_measurement():
+def test_restrictive_background_ceiling_requires_observed_measurement(tmp_path):
     candidates = [
         {"feature": "A", "q_value": 0.01, "detectability": 0.9,
          "blood_background_safety": "Data unavailable"},
