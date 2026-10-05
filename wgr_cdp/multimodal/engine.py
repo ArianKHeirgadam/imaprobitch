@@ -97,6 +97,23 @@ def estimate_lod(depth=300,error_rate=0.001,target_power=0.95,min_alt_reads=3):
 def _group_of(r, metadata):
     return str(r.get("group") or metadata.get(r["patient"],{}).get("group") or "unknown").lower()
 
+def _optional_mean(rows, aliases):
+    values=[]
+    for row in rows:
+        raw=None
+        for key in aliases:
+            if row.get(key) not in (None, ""):
+                raw=row.get(key)
+                break
+        try:
+            value=float(raw)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(value):
+            values.append(value)
+    return sum(values)/len(values) if values else None
+
+
 def analyze_multimodal_features(rows, metadata=None):
     metadata=metadata or {}
     by_type={}
@@ -123,7 +140,7 @@ def analyze_multimodal_features(rows, metadata=None):
             for r in subset:
                 tf=_f(r.get("tumor_fraction"),0.0); dp=int(_f(r.get("depth"),300) or 300); er=_f(r.get("error_rate"),0.001)
                 if tf>0: detectabilities.append(detectability_curve([tf],dp,er)[0]["power"])
-            stats.append({"feature":c,"feature_type":ft,"case_carriers":len(cdet),"control_carriers":len(hdet),"case_n":cn,"control_n":hn,"case_frequency":cf,"control_frequency":hf,"frequency_difference":cf-hf,"specificity":max(0.0,cf-hf),"early_stage_fraction":early_stage_fraction,"blood_background":max(backgrounds) if backgrounds else None,"detectability":sum(detectabilities)/len(detectabilities) if detectabilities else None,"validation_status":next((r.get("validation_status") for r in subset if r.get("validation_status")), "Data unavailable"),"validation_gap":next((r.get("validation_status") for r in subset if r.get("validation_status")), "Data unavailable")=="Data unavailable"})
+            stats.append({"feature":c,"feature_type":ft,"case_carriers":len(cdet),"control_carriers":len(hdet),"case_n":cn,"control_n":hn,"case_frequency":cf,"control_frequency":hf,"frequency_difference":cf-hf,"specificity":max(0.0,cf-hf),"early_stage_fraction":early_stage_fraction,"blood_background":max(backgrounds) if backgrounds else None,"detectability":sum(detectabilities)/len(detectabilities) if detectabilities else None,"clonality":_optional_mean(subset,("clonality","cancer_cell_fraction","ccf")),"allele_fraction":_optional_mean(subset,("allele_fraction","vaf","variant_allele_fraction")),"mappability":_optional_mean(subset,("unique_mappability","mappability","unique_mapping")),"prior_cfdna_evidence":_optional_mean(subset,("prior_cfdna_evidence","cfDNA_evidence_score","cfdna_evidence_score")),"alteration_type_support":_optional_mean(subset,("alteration_type_support","cfDNA_type_support","cfdna_type_support")),"validation_status":next((r.get("validation_status") for r in subset if r.get("validation_status")), "Data unavailable"),"validation_gap":next((r.get("validation_status") for r in subset if r.get("validation_status")), "Data unavailable")=="Data unavailable"})
         outputs[ft]=stats
     return outputs
 
