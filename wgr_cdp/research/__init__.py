@@ -23,8 +23,10 @@ __all__ = [
     "build_queries","search_pubmed","search_europe_pmc","search_literature","literature_record","build_candidate_literature_records","summarize_whitespace","write_literature_evidence",
     "stage_candidate_rates","early_stage_score","specificity_rates","specificity_score",
     "normalize_weights","weight_sensitivity","selection_stability","estimate_background","build_pon","annotate_pon","filter_candidates",
+    "C11_SCHEMA_VERSION","audit_run_artifacts","build_c11_manifest","write_c11_artifacts","append_c11_to_report",
 ]
 from .a5_integration import write_a5_artifacts, DEFAULT_WEIGHTS
 from .a6_validation import run_a6, conventional_feature_ranking, bootstrap_rank_stability
 from .a8_validation import run_a8, audit_cohort_leakage, revalidate_selected
 from .robustness import k_sensitivity, missingness_stress, ranking_robustness, run_c09_robustness, threshold_sensitivity, write_c09_artifacts
+from .c11_integration import SCHEMA_VERSION as C11_SCHEMA_VERSION, audit_run_artifacts, build_c11_manifest, write_c11_artifacts, append_c11_to_report
