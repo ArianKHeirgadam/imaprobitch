@@ -96,6 +96,10 @@ def threshold_sensitivity(candidates, base_weights, detectability_thresholds,
     constraints = dict(base_constraints or {})
     detectability = sorted({_finite_01(value, "detectability threshold") for value in detectability_thresholds})
     background = sorted({_finite_01(value, "background threshold") for value in background_thresholds}, reverse=True)
+    baseline_ranking = rank_candidates(candidates, base_weights, constraints)
+    baseline_ids = [
+        _candidate_id(row) for row in baseline_ranking["ranked"]
+    ]
     scenarios = []
     for d in detectability:
         for b in background:
@@ -113,7 +117,8 @@ def threshold_sensitivity(candidates, base_weights, detectability_thresholds,
                 "ranked_count": len(ranking["ranked"]),
                 "ineligible_count": len(ranking["ineligible"]),
                 "unscored_count": len(ranking["unscored"]),
-                "k_overlap_reference": len(set(ranked_ids[:k]) & set(ranking["ranked"][0:0])),
+                "k_overlap_reference": len(set(ranked_ids[:k]) & set(baseline_ids[:k])),
+                "k_jaccard_reference": _jaccard(ranked_ids[:k], baseline_ids[:k]),
             })
     return scenarios
 
@@ -271,7 +276,7 @@ def run_c09_robustness(
             "missingness_stress": {"status": UNAVAILABLE, "results": []},
         }
 
-    base_weights = dict(base_weights or {})
+    base_weights = dict(base_weights or {field: 1.0 for field in EVIDENCE_FIELDS})
     constraints = dict(constraints or {})
     if weight_scenarios is None:
         weight_scenarios = [
