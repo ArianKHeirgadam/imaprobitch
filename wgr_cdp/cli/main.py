@@ -18,6 +18,7 @@ def build_parser():
     run.add_argument("--cnv",help="CNV segment CSV/TSV")
     run.add_argument("--background",help="blood-background / PoN CSV/TSV")
     run.add_argument("--max-background",type=float,default=1.0,help="maximum allowed background frequency")
+    run.add_argument("--cohort-metadata",help="optional sample-level design metadata CSV for batch/platform/confounder audit")
     run.add_argument("--metadata")
     run.add_argument("--max-panel-size",type=int,default=15)
     run.add_argument("--depth",type=int,default=300)
@@ -77,7 +78,7 @@ def execute(command):
 def main(argv=None):
     args=build_parser().parse_args(argv)
     if args.command=="run":
-        result=run_command(args.healthy,args.cancer,args.output,args.annotate,args.alpha,args.timeout,args.features,args.metadata,args.max_panel_size,args.depth,args.error_rate,args.cnv,args.literature_search,args.validation_candidates,args.bootstrap,args.background,args.max_background)
+        result=run_command(args.healthy,args.cancer,args.output,args.annotate,args.alpha,args.timeout,args.features,args.metadata,args.max_panel_size,args.depth,args.error_rate,args.cnv,args.literature_search,args.validation_candidates,args.bootstrap,args.background,args.max_background,args.cohort_metadata)
     elif args.command=="validate":
         result=validate_command()
     elif args.command=="release":
