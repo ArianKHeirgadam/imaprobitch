@@ -79,10 +79,10 @@ def test_ranking_buckets_are_disjoint_and_duplicate_ids_audited():
         [
             candidate("A"),
             candidate("B", detectability=0.1),
-            candidate("C", detectability="Data unavailable"),
+            candidate("C", detectability=0.8, statistical_strength="Data unavailable"),
             candidate("A", specificity_score=0.5),
         ],
-        {"detectability": 1},
+        {"statistical_strength": 1},
         {"min_detectability": 0.5},
     )
     assert result["audit"]["candidate_count"] == 4
