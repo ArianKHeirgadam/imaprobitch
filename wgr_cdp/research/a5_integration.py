@@ -86,10 +86,11 @@ def write_a5_artifacts(
     literature_search=False,
     sensitivity_scenarios=None,
     matrix=None,
+    presence_matrix=None,
 ):
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
-    rows = [_base_evidence(r, matrix=matrix) for r in candidates]
+    rows = [_base_evidence(r, matrix=presence_matrix if presence_matrix is not None else matrix) for r in candidates]
 
     literature_records = build_candidate_literature_records(
         rows,
@@ -119,7 +120,7 @@ def write_a5_artifacts(
         "external_cancer_evidence", "blood_background_safety",
         "early_stage_score", "specificity_score", "literature_novelty",
         "literature_validation_gap", "literature_diagnostic_utility",
-        "research_score", "score_status", "score_fields",
+        "research_score", "confidence", "score_status", "score_fields",
     ]
     with (output / "candidate_evidence.csv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
