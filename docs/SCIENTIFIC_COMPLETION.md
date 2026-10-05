@@ -240,3 +240,25 @@ The final-panel layer additionally exposes:
 Literature search now supports both PubMed and Europe PMC as separate, source-labelled records. Logistic and elastic-net baseline helpers are available when labelled data are actually supplied; without labels they remain Data unavailable.
 
 These additions are additive and do not replace the previously validated A1-A6 APIs.
+
+
+## C-10 — Literature Evidence Provenance
+
+C-10 completes the literature-whitespace specification without creating a second
+evidence/scoring system.
+
+Implemented:
+- explicit candidate/feature + gene + region search identity;
+- three query intents, each with gastric-cancer and cfDNA/ctDNA/plasma/liquid-biopsy context;
+- independent PubMed and Europe PMC retrieval;
+- source-separated counts and provenance-bearing records;
+- manual review status on every record;
+- c10.literature.v1 JSON and CSV artifacts;
+- compatibility retention of A5 literature_whitespace.json;
+- explicit Data unavailable handling for unperformed or failed searches;
+- no automatic novelty, validation-gap, or diagnostic-utility claim from counts.
+
+Scientific boundary:
+C-10 does not claim global literature novelty, biological efficacy, clinical
+utility, diagnostic performance, or assay validation. Retrieval counts require
+manual review before they can support a literature interpretation.
