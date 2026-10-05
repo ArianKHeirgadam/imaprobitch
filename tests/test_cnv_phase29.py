@@ -101,14 +101,14 @@ def test_cnv_missing_segment_is_not_negative(tmp_path):
 
 def test_cnv_loss_and_segment_measurements(tmp_path):
     path = tmp_path / "cnv_loss.csv"
-    path.write_text(
-        "sample_id,chromosome,start,end,copy_number,log2_ratio,group\n"
-        "C1,9,100,500,1,-1.0,case\n"
-        "C2,9,100,500,1,-0.8,case\n"
-        "H1,9,100,500,2,0.0,control\n"
-        "H2,9,100,500,2,0.1,control\n",
-        encoding="utf-8",
+    rows_text = "sample_id,chromosome,start,end,copy_number,log2_ratio,group\n"
+    rows_text += "".join(
+        f"C{i},9,100,500,1,-1.0,case\\n" for i in range(1, 11)
     )
+    rows_text += "".join(
+        f"H{i},9,100,500,2,0.0,control\\n" for i in range(1, 11)
+    )
+    path.write_text(rows_text, encoding="utf-8")
     rows = read_cnv_segments(path)
     assert all(row["event_type"] == "LOSS" for row in rows[:2])
     result = analyze_cnv_segments(rows, tmp_path / "results")
