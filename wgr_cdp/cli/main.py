@@ -121,6 +121,8 @@ def execute(command):
     if command=="1000g-manifest": return {"command":"1000g-manifest","status":"available"}
     if command=="reference-acquire": return {"command":"reference-acquire","status":"available"}
     if command=="maf-to-vcf": return {"command":"maf-to-vcf","status":"available"}
+    if command=="normalize-vcf": return {"command":"normalize-vcf","status":"available"}
+    if command=="normalize-vcf-batch": return {"command":"normalize-vcf-batch","status":"available"}
     if command=="1000g-select": return {"command":"1000g-select","status":"available"}
     if command=="validate":
         return {"command":"validate",**validate_command()}
