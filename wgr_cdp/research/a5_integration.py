@@ -7,7 +7,12 @@ from __future__ import annotations
 import csv, json
 from pathlib import Path
 from .evidence import normalize_evidence, rank_candidates
-from .literature_whitespace import literature_record, summarize_whitespace
+from .literature_whitespace import (
+    build_candidate_literature_records,
+    literature_record,
+    summarize_whitespace,
+    write_literature_evidence,
+)
 from .sensitivity_analysis import weight_sensitivity, selection_stability
 
 DEFAULT_WEIGHTS = {
@@ -59,16 +64,23 @@ def write_a5_artifacts(output_dir, candidates, weights=None, constraints=None,
                        literature_search=False, sensitivity_scenarios=None):
     output=Path(output_dir); output.mkdir(parents=True,exist_ok=True)
     rows=[_base_evidence(r) for r in candidates]
-    literature_records=[]
-    if literature_search:
-        for row in rows:
-            gene=row.get("gene")
-            if gene:
-                literature_records.extend(literature_record(gene, search=True))
+    literature_records = build_candidate_literature_records(
+        rows,
+        search=literature_search,
+        sources=("PubMed", "Europe PMC"),
+    )
     literature_summary=summarize_whitespace(literature_records)
     for row in rows:
-        if row["gene"] and row["gene"] in literature_summary:
-            row["literature"]=literature_summary[row["gene"]]
+        key = str(row.get("candidate_id") or row.get("feature") or row.get("candidate") or "")
+        if key and key in literature_summary:
+            row["literature"]=literature_summary[key]
+    c10 = write_literature_evidence(
+        output,
+        rows,
+        search=literature_search,
+        sources=("PubMed", "Europe PMC"),
+        records=literature_records,
+    )
     weights=dict(weights or DEFAULT_WEIGHTS)
     ranking=rank_candidates(rows,weights,constraints or {})
     fields=["candidate_id","feature","gene","candidate_type","p_value","q_value",
@@ -86,7 +98,7 @@ def write_a5_artifacts(output_dir, candidates, weights=None, constraints=None,
          "ineligible":len(ranking["ineligible"]), "unscored":len(ranking["unscored"])},indent=2
     ),encoding="utf-8")
     (output/"literature_whitespace.json").write_text(json.dumps(
-        {"searched":bool(literature_search),"records":literature_records,
+        {"schema_version":"c10.literature.v1","searched":bool(literature_search),"records":literature_records,
          "summary":literature_summary},indent=2
     ),encoding="utf-8")
     scenarios=sensitivity_scenarios or [
@@ -103,6 +115,8 @@ def write_a5_artifacts(output_dir, candidates, weights=None, constraints=None,
         "candidate_evidence":str(output/"candidate_evidence.csv"),
         "candidate_constraints":str(output/"candidate_constraints.json"),
         "literature_whitespace":str(output/"literature_whitespace.json"),
+        "c10_literature_evidence_json":c10["json"],
+        "c10_literature_evidence_csv":c10["csv"],
         "ranking_sensitivity":str(output/"ranking_sensitivity.json"),
         "ranked_count":len(ranking["ranked"]),
         "ineligible_count":len(ranking["ineligible"]),
