@@ -171,3 +171,18 @@ def test_c09_artifacts_are_written(tmp_path: Path):
         assert Path(path).exists(), key
     payload = json.loads((tmp_path / "c09_robustness.json").read_text(encoding="utf-8"))
     assert payload["schema_version"] == "c09.robustness.v1"
+
+
+def test_c09_report_append_is_auditable(tmp_path: Path):
+    report = tmp_path / "report.html"
+    report.write_text("<html><body><h1>Report</h1></body></html>", encoding="utf-8")
+    from wgr_cdp.research.robustness import append_c09_to_report
+    result = run_c09_robustness(
+        candidates(),
+        WEIGHTS,
+        matrix={"P1": {"A": 1.0}},
+        k_values=(1,),
+        missingness_repeats=1,
+    )
+    assert append_c09_to_report(tmp_path, result) is True
+    assert "Phase C-09 Robustness" in report.read_text(encoding="utf-8")
