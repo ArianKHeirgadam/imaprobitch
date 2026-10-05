@@ -20,6 +20,7 @@ The phase covers four independent axes:
 ## Contracts
 
 - Weight values must be finite and non-negative; at least one must be positive.
+- Weight keys must belong to the canonical evidence schema; unknown components are rejected.
 - Thresholds are finite values in [0, 1].
 - Panel K is capped at 15.
 - Missing observations are never converted to explicit zero.
