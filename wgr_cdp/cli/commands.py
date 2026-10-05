@@ -24,7 +24,7 @@ def _integrate_candidates(output, snv_candidates, cnv_candidates):
     with (path/"integrated_candidates.csv").open("w",encoding="utf-8",newline="") as h:
         w=csv.DictWriter(h,fieldnames=fields); w.writeheader(); w.writerows(rows)
 
-def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,features=None,metadata=None,max_panel_size=15,depth=300,error_rate=0.001,cnv=None,literature_search=False,validation_candidates=None,bootstrap=200,background=None,max_background=1.0):
+def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,features=None,metadata=None,max_panel_size=15,depth=300,error_rate=0.001,cnv=None,literature_search=False,validation_candidates=None,bootstrap=200,background=None,max_background=1.0,cohort_metadata=None):
     run_config = {
         "healthy": str(healthy), "cancer": str(cancer), "alpha": alpha,
         "timeout": timeout, "features": str(features) if features else None,
@@ -34,12 +34,29 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         "validation_candidates": str(validation_candidates) if validation_candidates else None,
         "bootstrap": bootstrap, "background": str(background) if background else None,
         "max_background": max_background,
+        "cohort_metadata": str(cohort_metadata) if cohort_metadata else None,
         "robustness_seed": 42,
         "robustness_missingness_repeats": 10,
     }
     run_record = create_run_record(run_config)
     result=analyze_cohorts(healthy,cancer,output,annotate=annotate,alpha=alpha,timeout=timeout)
     result["run"] = run_record
+
+    # C-12 cohort design audit: metadata are optional and never guessed.
+    from wgr_cdp.research.cohort_design import merge_design_metadata, validate_cohort_design
+    cohort_payload = json.loads((Path(output) / "variants" / "run.json").read_text(encoding="utf-8"))
+    cohort_samples = cohort_payload.get("samples", [])
+    cohort_metadata_rows = []
+    if cohort_metadata:
+        with Path(cohort_metadata).open(encoding="utf-8-sig", newline="") as handle:
+            cohort_metadata_rows = list(csv.DictReader(handle))
+    cohort_samples = merge_design_metadata(cohort_samples, cohort_metadata_rows)
+    cohort_audit = validate_cohort_design(cohort_samples)
+    cohort_audit["metadata_source"] = str(cohort_metadata) if cohort_metadata else "Data unavailable"
+    (Path(output) / "c12_cohort_design.json").write_text(
+        json.dumps(cohort_audit, indent=2, default=str), encoding="utf-8"
+    )
+    result["c12_cohort_design"] = cohort_audit
     cnv_candidates=[]
     if cnv:
         cnv_rows=read_cnv_segments(cnv)
@@ -51,59 +68,6 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         result["multimodal"]=run_multimodal_analysis(features,Path(output)/"multimodal",_metadata(metadata),max_panel_size,depth,error_rate)
     _integrate_candidates(output,result.get("candidates",[]),cnv_candidates)
     from wgr_cdp.research.a5_integration import write_a5_artifacts
-    a5_candidates=list(result.get("candidates",[]))
-    a5_candidates.extend(cnv_candidates)
-    if features:
-        from wgr_cdp.research.a7_final_panel import load_multimodal_evidence, multimodal_to_candidates
-        mm_rows=load_multimodal_evidence(Path(output)/"multimodal"/"multimodal_cohort_comparison.csv")
-        a5_candidates.extend(multimodal_to_candidates(mm_rows))
-    if background:
-        from wgr_cdp.research.blood_background import estimate_background, build_pon, annotate_pon
-        background_path = Path(background)
-        with background_path.open(encoding="utf-8-sig", newline="") as h:
-            background_rows = list(csv.DictReader(h))
-        background_estimate = estimate_background(background_rows)
-        pon = build_pon(background_rows)
-        background_dir = Path(output) / "blood_background"
-        background_dir.mkdir(parents=True, exist_ok=True)
-        (background_dir / "background_estimate.json").write_text(
-            json.dumps(background_estimate, indent=2, default=str), encoding="utf-8"
-        )
-        (background_dir / "panel_of_normals.json").write_text(
-            json.dumps(pon, indent=2, default=str), encoding="utf-8"
-        )
-        a5_candidates = annotate_pon(a5_candidates, pon, key="region")
-        for row in a5_candidates:
-            key = str(row.get("region") or row.get("feature") or "")
-            source_data = background_estimate.get(key, {})
-            values = [item.get("max") for item in source_data.values() if isinstance(item, dict) and item.get("max") is not None]
-            bg = max(values) if values else None
-            row["blood_background_max"] = bg
-            row["blood_background_safety"] = "Data unavailable" if bg is None else max(0.0, min(1.0, 1.0 - bg))
-            row["blood_background_status"] = "Data unavailable" if bg is None else ("pass" if bg <= max_background else "fail")
-
-    result["a5"]=write_a5_artifacts(
-        output,
-        a5_candidates,
-        weights=None,
-        constraints={"min_detectability":0.0,"max_background":max_background},
-        literature_search=literature_search,
-    )
-    from wgr_cdp.research.a5_integration import append_a5_to_report
-    append_a5_to_report(output, result["a5"])
-    from wgr_cdp.research.a6_validation import run_a6
-    from wgr_cdp.research.a5_integration import DEFAULT_WEIGHTS
-    matrix = None
-    matrix_path = Path(output) / "multimodal" / "patient_candidate_matrix.csv"
-    if matrix_path.exists():
-        matrix = {}
-        with matrix_path.open(encoding="utf-8", newline="") as h:
-            for row in csv.DictReader(h):
-                patient = row.pop("patient")
-                matrix[patient] = {}
-                for key, value in row.items():
-                    try: matrix[patient][key] = float(value)
-                    except (TypeError, ValueError): pass
     validation_rows = None
     if validation_candidates:
         with Path(validation_candidates).open(encoding="utf-8-sig", newline="") as h:
@@ -136,12 +100,26 @@ def run_command(healthy,cancer,output,annotate=False,alpha=0.05,timeout=10,featu
         min_gain=0.02,
         bootstrap=200,
         candidate_layers=candidate_layers,
+        presence_matrix=presence_matrix,
     )
     from wgr_cdp.research.a7_final_panel import append_a7_to_report
     append_a7_to_report(output, result["a7"])
 
-    from wgr_cdp.research.a8_validation import run_a8, write_a8_artifacts, append_a8_to_report
+    from wgr_cdp.research.validation_coverage import build_presence_matrix_from_rows, compare_frozen_panel_coverage
+    validation_presence = None
+    if validation_rows:
+        validation_presence_payload = build_presence_matrix_from_rows(validation_rows)
+        validation_presence = validation_presence_payload.get("matrix")
     selected_a7 = result["a7"].get("panel", {}).get("selected", [])
+    validation_coverage = compare_frozen_panel_coverage(
+        presence_matrix, validation_presence, selected_a7
+    )
+    (Path(output) / "c12_validation_coverage.json").write_text(
+        json.dumps(validation_coverage, indent=2, default=str), encoding="utf-8"
+    )
+    result["c12_validation_coverage"] = validation_coverage
+
+    from wgr_cdp.research.a8_validation import run_a8, write_a8_artifacts, append_a8_to_report
     result["a8"] = run_a8(
         selected_a7,
         discovery_rows=a5_candidates,
