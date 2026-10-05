@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from wgr_cdp.data_ingestion.normalize import normalize_variant, normalize_vcf, read_fasta
+from wgr_cdp.data_ingestion.normalize import (\n    IndexedFastaReference,\n    normalize_variant,\n    normalize_vcf,\n    read_fasta,\n)
 
 
 def test_left_align_insertion_through_repeat():
@@ -72,3 +72,18 @@ def test_read_fasta_rejects_sequence_before_header(tmp_path):
         assert "before a header" in str(exc)
     else:
         raise AssertionError("Expected FASTA header validation failure")
+
+
+def test_indexed_fasta_builds_index_and_fetches(tmp_path):
+    fasta = tmp_path / "ref.fa"
+    fasta.write_text(">chr1 some description\nCAAAA\nGG\n>chr2\nTTTT\n", encoding="utf-8")
+
+    reference = IndexedFastaReference(fasta)
+    try:
+        assert Path(str(fasta) + ".fai").exists()
+        assert reference.resolve_chrom("1") == "chr1"
+        assert reference.fetch("1", 1, 5) == "AAAA"
+        assert reference.fetch("chr1", 5, 7) == "GG"
+        assert reference.fetch("2", 0, 4) == "TTTT"
+    finally:
+        reference.close()
