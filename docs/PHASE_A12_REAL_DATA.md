@@ -39,6 +39,10 @@ GTEx provides non-diseased tissue references including stomach.
 
 A12 records GTEx as a Non-diseased tissue reference. Raw DNA/RNA sequence data and full donor metadata are protected-access, so A12 never silently treats an open GTEx download as a public healthy-WGS VCF cohort.
 
+## Primary Cancer-vs-Normal decision
+
+For the main study, use paired TCGA-STAD tumor-normal WGS variant calling when controlled-access authorization is available. GDC release documentation states that WGS variant-calling workflows were released for existing WGS tumor-normal pairs, including GATK4 MuTect2 SNV VCFs and GATK4 CNV segments. Public WXS masked MAF remains an explicitly labelled fallback, not a substitute for WGS.
+
 ## Step 1 — Write the study data plan
 
 ~~~powershell
@@ -46,7 +50,21 @@ $env:PYTHONPATH="."
 python -m wgr_cdp.cli data-plan --output results/data_plan.json --healthy-samples 250
 ~~~
 
-## Step 2 — Discover TCGA-STAD files
+## Step 2 — Build the paired TCGA-STAD study selection
+
+~~~powershell
+python -m wgr_cdp.cli study-cohort --project TCGA-STAD --access controlled --strategy WGS --output results/tcga_stad_study.json
+~~~
+
+This queries GDC metadata, selects only cases with an explicit tumor/normal pair, and records WGS SNV/INDEL and CNV files scoped to those cases. A GDC token is required only when acquiring controlled files.
+
+For a public WXS fallback:
+
+~~~powershell
+python -m wgr_cdp.cli study-cohort --project TCGA-STAD --access open --strategy WXS --output results/tcga_stad_public_wxs_study.json
+~~~
+
+## Step 3 — Discover TCGA-STAD files
 
 ~~~powershell
 python -m wgr_cdp.cli inventory --project TCGA-STAD --access open --modality SNV_INDEL --output results/tcga_stad_snv_indel
