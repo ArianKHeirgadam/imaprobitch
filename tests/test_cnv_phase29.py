@@ -113,5 +113,7 @@ def test_cnv_loss_and_segment_measurements(tmp_path):
     assert all(row["event_type"] == "LOSS" for row in rows[:2])
     result = analyze_cnv_segments(rows, tmp_path / "results")
     assert result["significant_cnvs"] == 1
+    significant = (tmp_path / "results" / "significant_cnvs.csv").read_text(encoding="utf-8")
+    assert "q_value" in significant
     text = (tmp_path / "results" / "cnv_candidates.csv").read_text(encoding="utf-8")
     assert "candidate_rank" in text
