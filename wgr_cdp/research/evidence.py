@@ -111,8 +111,12 @@ def apply_constraints(
     # This field is a safety score (higher is safer), not raw background burden.
     # Missing background safety does not become positive evidence or a measured
     # failure; it remains unobserved and is handled separately by the score layer.
+    # When an explicit background ceiling is restrictive (< 1.0), an
+    # unobserved background measurement cannot satisfy that safety constraint.
+    # The default ceiling of 1.0 imposes no restriction, so missing background
+    # remains unobserved rather than being treated as a positive measurement.
     background_safe = (
-        True
+        max_background >= 1.0
         if background is None
         else background >= max(0.0, 1.0 - max_background)
     )
