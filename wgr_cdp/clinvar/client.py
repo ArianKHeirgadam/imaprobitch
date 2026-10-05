@@ -76,4 +76,6 @@ class ClinVarClient:
         })
         mapped["clinvar_id"] = variation_id
         mapped["clinvar_accession"] = record.get("accession")
+        mapped["clinical_significance"] = clinical_significance
+        mapped["clinical_significance_raw"] = record.get("clinical_significance")
         return mapped
