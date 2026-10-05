@@ -262,3 +262,24 @@ Scientific boundary:
 C-10 does not claim global literature novelty, biological efficacy, clinical
 utility, diagnostic performance, or assay validation. Retrieval counts require
 manual review before they can support a literature interpretation.
+
+
+## C-11 — End-to-End Integration Gate
+
+C-11 audits the concrete research CLI execution path rather than treating the
+legacy stage-envelope runner as evidence of end-to-end execution.
+
+Implemented:
+- required artifact groups across base cohort analysis, A5, A6, A7, A8, C-09 and C-10;
+- cross-stage consistency checks for A5 candidate partitioning;
+- C-10 schema and JSON/CSV record-count consistency;
+- A7 K <= 15 enforcement at the integration boundary;
+- explicit A8 quality-gate state validation;
+- final report presence check;
+- machine-readable c11.integration.v1 manifest and artifact index;
+- ordering before A9 so the final reproducibility manifest hashes C-11 outputs.
+
+Scientific boundary:
+A C-11 PASS establishes software-level integration and provenance completeness,
+not biological significance, clinical performance, assay LoD, independent-cohort
+performance, or literature novelty.
