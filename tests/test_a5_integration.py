@@ -26,3 +26,21 @@ def test_a5_hard_constraint_excludes_candidate(tmp_path):
         constraints={"min_detectability":0.5},literature_search=False)
     assert result["ranked_count"] == 1
     assert result["ineligible_count"] == 1
+
+
+def test_restrictive_background_ceiling_requires_observed_measurement():
+    candidates = [
+        {"feature": "A", "q_value": 0.01, "detectability": 0.9,
+         "blood_background_safety": "Data unavailable"},
+        {"feature": "B", "q_value": 0.01, "detectability": 0.9,
+         "blood_background_safety": 0.96},
+    ]
+    result = write_a5_artifacts(
+        tmp_path,
+        candidates,
+        constraints={"max_background": 0.1},
+        literature_search=False,
+    )
+    assert result["ranked_count"] == 1
+    assert result["ineligible_count"] == 1
+    assert result["unscored_count"] == 0
