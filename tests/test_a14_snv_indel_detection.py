@@ -66,7 +66,7 @@ def test_no_observation_is_not_negative(tmp_path):
     cancer = tmp_path / "c.vcf"
     healthy = tmp_path / "h.vcf"
     _vcf(cancer, "C1", ["1\t100\t.\tA\tG\t60\tPASS\t.\tGT\t1/1\n"])
-    _vcf(healthy, "H1", [])
+    _vcf(healthy, "H1", ["1\t200\t.\tC\tT\t60\tPASS\t.\tGT\t1/1\n"])
     result = detect_snv_indel([cancer], [healthy])
     assert result["status"] == "PASS"
     assert result["results"][0]["control_frequency"] is None
