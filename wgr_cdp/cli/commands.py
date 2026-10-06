@@ -717,3 +717,11 @@ def study_cohort_command(project="TCGA-STAD", output="results/tcga_stad_study.js
     path = write_study_selection(output, pairing)
     pairing["output"] = str(path)
     return pairing
+
+def snv_indel_detect_command(cancer, healthy, output, alpha=0.05, min_depth=None, min_vaf=None):
+    from wgr_cdp.research.snv_indel_detection import detect_snv_indel, write_detection_artifacts
+    cancer_paths = [Path(cancer)] if Path(cancer).is_file() else sorted(Path(cancer).glob("*.vcf*"))
+    healthy_paths = [Path(healthy)] if Path(healthy).is_file() else sorted(Path(healthy).glob("*.vcf*"))
+    result = detect_snv_indel(cancer_paths, healthy_paths, alpha, min_depth, min_vaf)
+    write_detection_artifacts(result, output)
+    return {"command": "snv-indel-detect", "status": result["status"], "observation_count": len(result["rows"]), "candidate_count": len(result["results"]), "output": str(output)}
