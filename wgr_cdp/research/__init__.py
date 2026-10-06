@@ -16,7 +16,7 @@ from .blood_background import estimate_background, build_pon, annotate_pon, filt
 __all__ = [
     "detectability_probability","power_curve","lod_curve","detectability_grid","estimate_lod","patient_candidate_matrix",
     "exact_scan","coarse_to_fine_scan","panel_coverage","greedy_panel","ilp_panel",
-    "alpha_budget","AnalysisState","LeakageGuard","bootstrap_selection",
+    "alpha_budget","classify_variant","parse_vcf","detect_snv_indel","write_detection_artifacts","AnalysisState","LeakageGuard","bootstrap_selection",
     "cohort_holdout_guard","patient_level_split","stratified_patient_level_split","audit_three_way_split","build_split_manifest","write_split_manifest","evaluate_binary_predictions","fit_binary_threshold","evaluate_with_frozen_threshold","run_c04_evaluation","benjamini_hochberg","fisher_exact_2x2",
     "per_feature_alpha","cohen_h","detectability_score","simulate_detectability","validate_analytical_against_simulation",
     "normalize_evidence","apply_constraints","transparent_weighted_score","rank_candidates",
@@ -45,3 +45,5 @@ from .external_evidence import evidence_hierarchy, classify_external_evidence
 from .confidence import evidence_strength_confidence
 from .validation_coverage import compare_frozen_panel_coverage, build_presence_matrix_from_rows
 from .c12_final_audit import audit_c12, write_c12_final_audit, append_c12_final_audit
+
+from .snv_indel_detection import classify_variant, parse_vcf, detect_snv_indel, write_detection_artifacts
