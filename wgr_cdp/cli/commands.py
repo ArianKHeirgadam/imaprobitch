@@ -664,6 +664,49 @@ def open_study_acquisition_manifest_command(study_path, output):
     manifest["output_tsv"] = str(tsv_path)
     return manifest
 
+
+def open_study_subset_manifest_command(study_path, output, limit=20, strategy="WXS"):
+    """Build a small, deterministic open-access acquisition manifest.
+
+    Selection is by paired biological case, never by arbitrary file order.
+    """
+    from wgr_cdp.data_ingestion.study_cohort import select_open_study_subset
+    from wgr_cdp.data_ingestion.gdc_acquisition import (
+        build_acquisition_manifest,
+        write_acquisition_manifest,
+        write_tsv_manifest,
+    )
+    study = json.loads(Path(study_path).read_text(encoding="utf-8"))
+    subset = select_open_study_subset(study, limit=limit, strategy=strategy)
+    manifest = build_acquisition_manifest(
+        str(study.get("source_project") or "Data unavailable"),
+        subset["selected_files"],
+        selected_types={"SNV_INDEL"},
+    )
+    manifest.update({
+        "study_schema_version": study.get("schema_version", "Data unavailable"),
+        "study_path": str(study_path),
+        "subset_schema_version": subset["schema_version"],
+        "requested_case_limit": subset["requested_case_limit"],
+        "selected_case_count": subset["selected_case_count"],
+        "selected_file_count": subset["selected_file_count"],
+        "selected_case_ids": subset["selected_case_ids"],
+        "full_paired_case_count": subset["full_paired_case_count"],
+        "full_open_public_wxs_count": subset["full_open_public_wxs_count"],
+        "access_policy": subset["access_policy"],
+        "download_scope": subset["download_scope"],
+        "scientific_role": subset["scientific_role"],
+        "download_policy": (
+            "Only the selected open WXS SNV/INDEL subset is eligible for download. "
+            "The full TCGA-STAD inventory is not downloaded."
+        ),
+    })
+    json_path = write_acquisition_manifest(output, manifest)
+    tsv_path = write_tsv_manifest(str(output).replace(".json", ".tsv"), manifest)
+    manifest["output_json"] = str(json_path)
+    manifest["output_tsv"] = str(tsv_path)
+    return manifest
+
 def study_cohort_command(project="TCGA-STAD", output="results/tcga_stad_study.json", access=None, timeout=30, strategy="WGS"):
     from wgr_cdp.data_ingestion.gdc_cohort import (
         query_cases, query_variant_files, build_cohort_manifest,
