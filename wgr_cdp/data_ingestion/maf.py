@@ -202,6 +202,9 @@ def convert_maf_directory_to_vcf(input_dir, output_dir, *, pattern="*.maf.gz"):
         and qc_items and all(item["status"] == "PASS" for item in qc_items)
         else "Data unavailable" if not results else "CONDITIONAL"
     )
+    empty_source_count = sum(
+        1 for r in results if r["conversion"].get("empty_source") is True
+    )
     return {
         "schema_version": "A13-MAF-BATCH-1",
         "status": status,
@@ -209,6 +212,7 @@ def convert_maf_directory_to_vcf(input_dir, output_dir, *, pattern="*.maf.gz"):
         "output_dir": str(output_dir),
         "input_file_count": len(files),
         "converted_file_count": files_with_outputs,
+        "empty_source_count": empty_source_count,
         "sample_count": sum(r["conversion"].get("sample_count", 0) for r in results),
         "variant_record_count": sum(r["conversion"].get("record_count", 0) for r in results),
         "qc_record_count": sum(item["record_count"] for item in qc_items),
