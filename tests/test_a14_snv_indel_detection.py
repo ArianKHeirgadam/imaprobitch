@@ -81,3 +81,18 @@ def test_artifacts(tmp_path):
     write_detection_artifacts(result, out)
     assert (out / "snv_indel_observations.csv").exists()
     assert (out / "snv_indel_detection.csv").exists()
+
+
+def test_real_cancer_side_validation_is_explicitly_conditional_without_control(tmp_path):
+    cancer = tmp_path / "cancer.vcf"
+    _vcf(cancer, "C1", [
+        "1\t100\t.\tA\tG\t60\tPASS\tGENE=TP53\tGT:DP:AD\t1/1:100:0,100\n",
+        "2\t200\t.\tA\tAT\t60\tPASS\t.\tGT:DP:AD\t1/1:100:0,100\n",
+    ])
+    from wgr_cdp.research.snv_indel_detection import validate_snv_indel_cohort
+    result = validate_snv_indel_cohort([cancer])
+    assert result["status"] == "PASS"
+    assert result["control_status"] == "Data unavailable"
+    assert result["observation_count"] == 2
+    assert result["snv_count"] == 1
+    assert result["indel_count"] == 1
