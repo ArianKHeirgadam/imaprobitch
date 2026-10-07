@@ -180,3 +180,45 @@ def write_detection_artifacts(result, output_dir):
         writer.writeheader()
         writer.writerows(result["results"])
     return result
+
+
+def validate_snv_indel_cohort(cancer_paths, min_depth=None, min_vaf=None):
+    """Validate a real cancer-side normalized VCF cohort without inventing a control group.
+
+    This is a technical/scientific intake validation only. It does not perform
+    cancer-vs-healthy inference because matched TCGA normals are not an
+    independent healthy population and the open somatic MAF fallback does not
+    contain an independent healthy VCF.
+    """
+    rows = load_cohort(cancer_paths, "cancer", min_depth, min_vaf)
+    samples = sorted({str(row["patient"]) for row in rows})
+    feature_counts = defaultdict(int)
+    status_counts = defaultdict(int)
+    chromosome_counts = defaultdict(int)
+    for row in rows:
+        feature_counts[row["feature_type"]] += 1
+        status_counts[row["status"]] += 1
+        chromosome_counts[str(row["chrom"])] += 1
+    return {
+        "schema_version": "A14-SNV-INDEL-REAL-VALIDATION-1",
+        "status": "PASS" if rows else "Data unavailable",
+        "cohort_role": "cancer_discovery_validation",
+        "control_status": "Data unavailable",
+        "control_reason": (
+            "No independent healthy VCF was supplied. TCGA matched normals are "
+            "paired comparators, not an independent healthy population."
+        ),
+        "input_file_count": len(cancer_paths),
+        "sample_count": len(samples),
+        "observation_count": len(rows),
+        "snv_count": int(feature_counts.get("SNV", 0)),
+        "indel_count": int(feature_counts.get("INDEL", 0)),
+        "detected_count": int(status_counts.get("Detected", 0)),
+        "unavailable_count": int(status_counts.get("Data unavailable", 0)),
+        "chromosome_count": len(chromosome_counts),
+        "feature_counts": dict(sorted(feature_counts.items())),
+        "status_counts": dict(sorted(status_counts.items())),
+        "chromosome_counts": dict(sorted(chromosome_counts.items())),
+        "min_depth": min_depth,
+        "min_vaf": min_vaf,
+    }
