@@ -182,7 +182,7 @@ def write_detection_artifacts(result, output_dir):
     return result
 
 
-def validate_snv_indel_cohort(cancer_paths, min_depth=None, min_vaf=None):
+def validate_snv_indel_cohort(cancer_paths, min_depth=None, min_vaf=None, study_manifest=None, maf_qc=None):
     """Validate a real cancer-side normalized VCF cohort without inventing a control group.
 
     This is a technical/scientific intake validation only. It does not perform
@@ -192,6 +192,30 @@ def validate_snv_indel_cohort(cancer_paths, min_depth=None, min_vaf=None):
     """
     rows = load_cohort(cancer_paths, "cancer", min_depth, min_vaf)
     samples = sorted({str(row["patient"]) for row in rows})
+
+    selected_case_count = None
+    selected_case_ids = []
+    if study_manifest:
+        study = study_manifest if isinstance(study_manifest, dict) else {}
+        selected_case_ids = list(study.get("selected_case_ids") or [])
+        raw_count = study.get("selected_case_count")
+        if raw_count is None:
+            raw_count = len(selected_case_ids)
+        selected_case_count = int(raw_count)
+
+    empty_source_count = None
+    if maf_qc:
+        qc_payload = maf_qc if isinstance(maf_qc, dict) else {}
+        if qc_payload.get("empty_source_count") is not None:
+            empty_source_count = int(qc_payload["empty_source_count"])
+
+    denominator_status = "Data unavailable"
+    if selected_case_count is not None:
+        denominator_status = (
+            "PASS"
+            if selected_case_count == len(samples) + int(empty_source_count or 0)
+            else "CONDITIONAL"
+        )
     feature_counts = defaultdict(int)
     status_counts = defaultdict(int)
     chromosome_counts = defaultdict(int)
@@ -210,6 +234,16 @@ def validate_snv_indel_cohort(cancer_paths, min_depth=None, min_vaf=None):
         ),
         "input_file_count": len(cancer_paths),
         "sample_count": len(samples),
+        "variant_bearing_sample_count": len(samples),
+        "selected_case_count": selected_case_count,
+        "empty_source_count": empty_source_count,
+        "case_denominator_status": denominator_status,
+        "case_denominator_semantics": (
+            "selected biological cases are distinct from variant-bearing samples; "
+            "an empty source is Data unavailable and is not interpreted as zero, "
+            "negative, or healthy."
+        ),
+        "selected_case_ids": selected_case_ids,
         "observation_count": len(rows),
         "snv_count": int(feature_counts.get("SNV", 0)),
         "indel_count": int(feature_counts.get("INDEL", 0)),
