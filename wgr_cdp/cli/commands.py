@@ -461,9 +461,9 @@ def reference_acquire_command(manifest_path, output_dir, limit=None, timeout=60)
     return manifest
 
 
-def maf_batch_command(input_dir, output_dir, pattern="*.maf.gz"):
+def maf_batch_command(input_dir, output_dir, pattern="*.maf.gz", reference=None):
     from wgr_cdp.data_ingestion.maf import convert_maf_directory_to_vcf
-    result = convert_maf_directory_to_vcf(input_dir, output_dir, pattern=pattern)
+    result = convert_maf_directory_to_vcf(input_dir, output_dir, pattern=pattern, reference=reference)
     path = Path(output_dir)
     path.mkdir(parents=True, exist_ok=True)
     manifest = path / "maf_batch_qc.json"
