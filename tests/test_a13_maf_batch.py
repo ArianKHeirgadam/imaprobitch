@@ -29,3 +29,25 @@ def test_convert_maf_directory_to_vcf_and_qc(tmp_path):
     vcfs = list(out_dir.glob("*.vcf"))
     assert len(vcfs) == 1
     assert "SOURCE=GDC_MASKED_SOMATIC_MAF" in vcfs[0].read_text(encoding="utf-8")
+
+
+def test_valid_header_with_zero_variant_rows_is_available_not_unavailable(tmp_path):
+    source_dir = tmp_path / "maf"
+    out_dir = tmp_path / "vcf"
+    source_dir.mkdir()
+    source = source_dir / "empty.maf"
+    source.write_text(
+        "Hugo_Symbol\tChromosome\tStart_Position\tReference_Allele\t"
+        "Tumor_Seq_Allele2\tTumor_Sample_Barcode\tVariant_Classification\n",
+        encoding="utf-8",
+    )
+
+    result = convert_maf_directory_to_vcf(source_dir, out_dir, pattern="*.maf")
+
+    item = result["results"][0]["conversion"]
+    assert item["status"] == "Available"
+    assert item["empty_source"] is True
+    assert item["sample_count"] == 0
+    assert item["record_count"] == 0
+    assert result["empty_source_count"] == 1
+    assert result["status"] == "CONDITIONAL"
