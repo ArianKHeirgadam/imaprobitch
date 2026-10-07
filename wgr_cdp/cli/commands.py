@@ -770,11 +770,17 @@ def snv_indel_detect_command(cancer, healthy, output, alpha=0.05, min_depth=None
     return {"command": "snv-indel-detect", "status": result["status"], "observation_count": len(result["rows"]), "candidate_count": len(result["results"]), "output": str(output)}
 
 
-def snv_indel_validate_command(cancer, output, min_depth=None, min_vaf=None):
+def snv_indel_validate_command(cancer, output, min_depth=None, min_vaf=None, study_manifest=None, maf_qc=None):
     from wgr_cdp.research.snv_indel_detection import validate_snv_indel_cohort, write_detection_artifacts
     cancer_path = Path(cancer)
     cancer_paths = [cancer_path] if cancer_path.is_file() else sorted(cancer_path.glob("*.vcf*"))
-    result = validate_snv_indel_cohort(cancer_paths, min_depth, min_vaf)
+    study_payload = json.loads(Path(study_manifest).read_text(encoding="utf-8")) if study_manifest else None
+    maf_qc_payload = json.loads(Path(maf_qc).read_text(encoding="utf-8")) if maf_qc else None
+    result = validate_snv_indel_cohort(
+        cancer_paths, min_depth, min_vaf,
+        study_manifest=study_payload,
+        maf_qc=maf_qc_payload,
+    )
     output_path = Path(output)
     output_path.mkdir(parents=True, exist_ok=True)
     (output_path / "snv_indel_real_validation.json").write_text(
