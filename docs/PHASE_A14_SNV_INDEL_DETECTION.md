@@ -43,3 +43,29 @@ status as `Data unavailable` rather than treating TCGA matched normals or
 Cancer-vs-control detection remains available through
 `snv-indel-detect` when an explicit independent control VCF cohort is
 provided.
+
+
+## Case-denominator audit
+
+For real-data validation, the selected biological-case denominator must remain distinct from the
+variant-bearing sample denominator. An empty source is **Data unavailable**, not zero, negative,
+or healthy.
+
+Example:
+
+```powershell
+.\venv\Scripts\python.exe -m wgr_cdp.cli snv-indel-validate `
+  --cancer data/real/tcga_stad_subset_20_normalized `
+  --output results/a14_tcga_stad_real_validation `
+  --study-manifest results/tcga_stad_subset_20.json `
+  --maf-qc data/real/tcga_stad_subset_20_vcf/maf_batch_qc.json
+```
+
+The resulting artifact records:
+- `selected_case_count`
+- `variant_bearing_sample_count`
+- `empty_source_count`
+- `case_denominator_status`
+
+For the validated 20-case subset, the expected semantics are 20 selected cases, 19
+variant-bearing samples, and 1 empty source marked Data unavailable.
