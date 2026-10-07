@@ -227,3 +227,85 @@ def select_primary_variant_files(variant_files, *, modality="SNV_INDEL",
             key=lambda row: _file_rank(row, modality),
         )))
     return selected
+
+
+def select_open_study_subset(study_manifest, limit=20, *, strategy="WXS"):
+    """Select a deterministic paired-case subset from the open WXS fallback.
+
+    The limit applies to biological cases, not arbitrary files. Only paired
+    TCGA cases that have an open WXS SNV/INDEL MAF/VCF representation are
+    eligible. The subset is for real-data software validation and does not
+    imply whole-cohort statistical inference.
+    """
+    limit = int(limit)
+    if limit <= 0:
+        raise ValueError("limit must be greater than zero")
+
+    paired = study_manifest.get("selected") or []
+    paired_ids = {
+        str(item.get("case_id"))
+        for item in paired
+        if item.get("case_id")
+    }
+    public = []
+    for row in study_manifest.get("public_wxs_maf_fallback") or []:
+        if str(row.get("access") or "").lower() != "open":
+            continue
+        if str(row.get("experimental_strategy") or "").upper() != str(strategy).upper():
+            continue
+        fmt = str(row.get("data_format") or "").upper()
+        if fmt not in {"MAF", "VCF"}:
+            continue
+        case_ids = _file_case_ids(row)
+        eligible = sorted(case_ids & paired_ids)
+        if not eligible:
+            continue
+        item = dict(row)
+        item["_eligible_case_ids"] = eligible
+        public.append(item)
+
+    by_case = defaultdict(list)
+    for row in public:
+        for case_id in row["_eligible_case_ids"]:
+            by_case[case_id].append(row)
+
+    selected_cases = []
+    selected_files = []
+    for case_id in sorted(by_case):
+        if len(selected_cases) >= limit:
+            break
+        row = min(
+            by_case[case_id],
+            key=lambda item: (
+                str(item.get("file_name") or ""),
+                str(item.get("file_id") or ""),
+            ),
+        )
+        selected_cases.append(case_id)
+        item = dict(row)
+        item.pop("_eligible_case_ids", None)
+        item["study_role"] = "public_wxs_subset"
+        selected_files.append(item)
+
+    return {
+        "schema_version": "A13-STUDY-SUBSET-1",
+        "status": "Available" if selected_files else UNAVAILABLE,
+        "source_project": study_manifest.get("source_project", UNAVAILABLE),
+        "requested_case_limit": limit,
+        "selected_case_count": len(selected_cases),
+        "selected_file_count": len(selected_files),
+        "selected_case_ids": selected_cases,
+        "selected_files": selected_files,
+        "full_paired_case_count": int(study_manifest.get("selected_pair_count") or 0),
+        "full_open_public_wxs_count": len(public),
+        "selection_rule": (
+            "Deterministic lexical case ordering; one open WXS SNV/INDEL "
+            "MAF/VCF representation per eligible paired case."
+        ),
+        "access_policy": "open_only",
+        "download_scope": "subset_only",
+        "scientific_role": (
+            "Real-data subset validation; not a whole-cohort statistical result "
+            "and not an independent healthy population."
+        ),
+    }
