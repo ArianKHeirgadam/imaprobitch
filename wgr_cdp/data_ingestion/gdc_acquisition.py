@@ -100,6 +100,7 @@ def build_acquisition_manifest(project_id: str, files: list[dict],
         if selected_types is None or modality in selected_types:
             selected.append(item)
     selected.sort(key=lambda r: (str(r.get("modality")), str(r.get("file_id"))))
+    selected_size_bytes = sum(int(row.get("file_size") or 0) for row in selected)
     return {
         "schema_version": "A11-1",
         "status": "Available",
@@ -107,8 +108,14 @@ def build_acquisition_manifest(project_id: str, files: list[dict],
         "project_id": project_id,
         "selected_count": len(selected),
         "selected_modalities": sorted({r["modality"] for r in selected}),
+        "selected_size_bytes": selected_size_bytes,
+        "selected_size_mb": round(selected_size_bytes / 1024**2, 2),
+        "selected_size_gb": round(selected_size_bytes / 1024**3, 3),
         "downloaded_count": 0,
         "verified_count": 0,
+        "downloaded_size_bytes": 0,
+        "downloaded_size_mb": 0.0,
+        "downloaded_size_gb": 0.0,
         "files": selected,
     }
 
