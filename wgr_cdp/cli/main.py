@@ -1,6 +1,6 @@
 """WGR-CDP command line interface."""
 import argparse, json
-from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, maf_batch_command, one_kg_select_command, one_kg_subset_command, study_cohort_command, study_acquisition_manifest_command, open_study_acquisition_manifest_command, open_study_subset_manifest_command, normalize_vcf_command, normalize_vcf_batch_command, snv_indel_detect_command
+from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, maf_batch_command, one_kg_select_command, one_kg_subset_command, study_cohort_command, study_acquisition_manifest_command, open_study_acquisition_manifest_command, open_study_subset_manifest_command, normalize_vcf_command, normalize_vcf_batch_command, snv_indel_detect_command, snv_indel_validate_command
 from wgr_cdp.release.reproducibility import release_readiness
 
 
