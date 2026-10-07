@@ -98,7 +98,7 @@ def compare_cnv_events_and_dosage(rows, permutations=999, seed=42):
             "case_sample_count": len(case_samples), "comparator_sample_count": len(comparator_samples),
             "region_count": len(regions)}
 
-def validate_cnv_cohort(input_path, output_dir, *, alpha=0.05, permutations=999, seed=42):
+def validate_cnv_cohort(input_path, output_dir, *, alpha=0.05, permutations=999, seed=42, metadata_path=None):
     """Run A15 validation and write provenance/statistical artifacts."""
     source, output = Path(input_path), Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -118,9 +118,29 @@ def validate_cnv_cohort(input_path, output_dir, *, alpha=0.05, permutations=999,
         "scientific_role": "research_cohort_validation", "input_file_count": len(provenance),
         "input_record_count": len(rows), "source_provenance": provenance, "alpha": float(alpha),
         "permutations": int(permutations), "seed": int(seed),
+        "metadata_path": str(metadata_path) if metadata_path else None,
         "healthy_control_status": "Data unavailable",
         "healthy_control_semantics": "A comparator/matched normal is not relabelled as an independent healthy population.",
     }
+    if metadata_path:
+        import csv
+        metadata_file = Path(metadata_path)
+        if not metadata_file.exists():
+            raise ValueError(f"CNV metadata file does not exist: {metadata_file}")
+        with metadata_file.open(encoding="utf-8-sig", newline="") as handle:
+            metadata_rows = list(csv.DictReader(handle))
+        mapping = {}
+        for item in metadata_rows:
+            sid = str(item.get("sample_id") or item.get("sample") or item.get("gdc_aliquot_id") or "").strip()
+            grp = str(item.get("group") or item.get("cohort") or "").strip()
+            if sid and grp:
+                mapping[sid] = grp
+        for row in rows:
+            if str(row.get("group", "")).strip() == "" and row["sample_id"] in mapping:
+                row["group"] = mapping[row["sample_id"]]
+        result["group_metadata_source"] = str(metadata_file)
+    else:
+        result["group_metadata_source"] = "inline CNV group column"
     groups = {_group(r) for r in rows}
     if "case" not in groups or "comparator" not in groups:
         result.update({"status": "CONDITIONAL", "comparison_status": "Data unavailable",
