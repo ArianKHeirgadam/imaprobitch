@@ -146,3 +146,16 @@ def test_download_file_curl_fallback_and_size_reporting(monkeypatch, tmp_path):
     assert result["selected_size_mb"] == round(3 / 1024**2, 2)
     assert result["selected_size_gb"] == round(3 / 1024**3, 3)
     assert result["downloaded_size_bytes"] == 3
+
+
+def test_inventory_supports_exact_data_type_and_sample_metadata(monkeypatch):
+    seen = {}
+    def fake(url, timeout=30):
+        seen["url"] = url
+        return {"data": {"hits": [{"file_id": "cnv1", "data_type": "Masked Copy Number Segment", "cases": [{"samples": [{"sample_type": "Primary Tumor", "tissue_type": "Tumor"}]}]}], "pagination": {"total": 1}}}
+    monkeypatch.setattr(a, "_get_json", fake)
+    rows = a.inventory_files("TCGA-STAD", access="open", data_category="Copy Number Variation", data_format="TXT", data_type="Masked Copy Number Segment", max_files=1)
+    assert rows[0]["data_type"] == "Masked Copy Number Segment"
+    assert "data_type" in seen["url"]
+    assert "cases.samples.sample_type" in seen["url"]
+    assert "cases.samples.portions.analytes.aliquots.aliquot_id" in seen["url"]
