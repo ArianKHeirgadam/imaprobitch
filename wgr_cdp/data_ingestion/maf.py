@@ -10,6 +10,8 @@ import csv
 import gzip
 from pathlib import Path
 
+from wgr_cdp.data_ingestion.normalize import IndexedFastaReference
+
 UNAVAILABLE = "Data unavailable"
 
 def _open(path):
@@ -60,22 +62,78 @@ def read_maf(path):
         reader = csv.DictReader(data_lines, fieldnames=header, delimiter="\t")
         return list(reader)
 
-def convert_maf_to_vcf(input_path, output_dir, *, prefix="tcga_stad"):
+def _reference_object(reference):
+    if reference is None:
+        return None, False
+    if isinstance(reference, IndexedFastaReference):
+        return reference, False
+    return IndexedFastaReference(reference), True
+
+
+def _maf_to_vcf_alleles(row, reference):
+    """Convert GDC/TCGA MAF alleles to reference-valid VCF alleles."""
+    chrom = str(row.get("Chromosome") or "").strip()
+    ref = str(row.get("Reference_Allele") or "").strip().upper()
+    alt = str(row.get("Tumor_Seq_Allele2") or "").strip().upper()
+    try:
+        pos = int(row.get("Start_Position"))
+    except (TypeError, ValueError):
+        return None
+    if not chrom or pos < 1 or not ref or not alt:
+        return None
+    if ref != "-" and alt != "-":
+        if reference is None:
+            return chrom, pos, ref, alt
+        observed = reference.fetch(chrom, pos - 1, pos - 1 + len(ref))
+        if observed != ref:
+            return None
+        return chrom, pos, ref, alt
+    if reference is None:
+        return None
+    if ref == "-" and alt != "-":
+        anchor = reference.fetch(chrom, pos - 1, pos)
+        if not anchor:
+            return None
+        return chrom, pos, anchor, anchor + alt
+    if ref != "-" and alt == "-":
+        observed = reference.fetch(chrom, pos - 1, pos - 1 + len(ref))
+        if observed != ref:
+            return None
+        if pos > 1:
+            anchor = reference.fetch(chrom, pos - 2, pos - 1)
+            if not anchor:
+                return None
+            return chrom, pos - 1, anchor + ref, anchor
+        following = reference.fetch(chrom, pos - 1 + len(ref), pos + len(ref))
+        if not following:
+            return None
+        return chrom, pos, ref + following, following
+    return None
+
+
+def convert_maf_to_vcf(input_path, output_dir, *, prefix="tcga_stad", reference=None):
     rows = read_maf(input_path)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    reference_obj, owns_reference = _reference_object(reference)
     by_sample = {}
+    unresolved_indel_count = 0
     for row in rows:
         sample = str(row.get("Tumor_Sample_Barcode") or "").strip()
-        chrom = str(row.get("Chromosome") or "").strip()
         ref = str(row.get("Reference_Allele") or "").strip()
         alt = str(row.get("Tumor_Seq_Allele2") or "").strip()
-        if not sample or not chrom or not ref or not alt or alt in {".", "-"}:
+        if not sample or not ref or not alt or alt == ".":
             continue
-        try:
-            pos = int(row.get("Start_Position"))
-        except (TypeError, ValueError):
+        is_indel = ref == "-" or alt == "-"
+        if is_indel and reference_obj is None:
+            unresolved_indel_count += 1
             continue
+        alleles = _maf_to_vcf_alleles(row, reference_obj)
+        if alleles is None:
+            if is_indel:
+                unresolved_indel_count += 1
+            continue
+        chrom, pos, vcf_ref, vcf_alt = alleles
         gene = _first(row, ("Hugo_Symbol", "Gene"))
         consequence = _first(row, ("Variant_Classification", "Consequence"))
         variant_type = _first(row, ("Variant_Type",))
@@ -84,22 +142,28 @@ def convert_maf_to_vcf(input_path, output_dir, *, prefix="tcga_stad"):
             f"GENE={_esc(gene)}",
             f"CONSEQUENCE={_esc(consequence)}",
             f"VARIANT_TYPE={_esc(variant_type)}",
+            f"MAF_REF={_esc(ref)}",
+            f"MAF_ALT={_esc(alt)}",
         ]
-        sample_rows = by_sample.setdefault(sample, set())
-        sample_rows.add((chrom, pos, ".", ref, alt, ".", "PASS", ";".join(info)))
+        by_sample.setdefault(sample, set()).add(
+            (chrom, pos, ".", vcf_ref, vcf_alt, ".", "PASS", ";".join(info))
+        )
     outputs = []
+    reference_label = "GRCh38" if reference_obj is not None else "Data unavailable"
     header = [
         "##fileformat=VCFv4.2",
         "##source=WGR-CDP_MAF_adapter",
-        "##reference=Data unavailable",
+        f"##reference={reference_label}",
         '##INFO=<ID=GENE,Number=1,Type=String,Description="Gene from source MAF">',
         '##INFO=<ID=CONSEQUENCE,Number=1,Type=String,Description="MAF variant classification">',
         '##INFO=<ID=VARIANT_TYPE,Number=1,Type=String,Description="Source MAF variant type">',
+        '##INFO=<ID=MAF_REF,Number=1,Type=String,Description="Original MAF reference allele">',
+        '##INFO=<ID=MAF_ALT,Number=1,Type=String,Description="Original MAF tumor allele 2">',
         '##INFO=<ID=SOURCE,Number=1,Type=String,Description="Provenance of adapter record">',
-        "##wgr_cdp_normalization_status=reference_aware_normalization_required",
-        "#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO",
+        "##wgr_cdp_maf_conversion=reference_aware",
+        "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO",
     ]
-    for index, (sample, records) in enumerate(sorted(by_sample.items())):
+    for sample, records in sorted(by_sample.items()):
         safe = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in sample)
         path = output_dir / f"{prefix}.{safe}.vcf"
         with path.open("w", encoding="utf-8", newline="") as handle:
@@ -113,21 +177,22 @@ def convert_maf_to_vcf(input_path, output_dir, *, prefix="tcga_stad"):
             "source_format": "GDC masked somatic MAF",
             "normalization_required": True,
         })
-    # A valid MAF with a detected header but zero data rows is an available
-    # source with zero reported somatic records, not an unavailable source.
-    # Keep this distinction explicit so downstream logic never turns an empty
-    # callset into a false negative.
+    if owns_reference and reference_obj is not None:
+        reference_obj.close()
+    record_count = sum(item["record_count"] for item in outputs)
     return {
-        "schema_version": "A12-MAF-1",
-        "status": "Available",
+        "schema_version": "A13-MAF-REFERENCE-AWARE-1",
+        "status": "Available" if not rows or unresolved_indel_count == 0 else "CONDITIONAL",
         "source_file": str(input_path),
         "sample_count": len(outputs),
-        "record_count": sum(item["record_count"] for item in outputs),
+        "record_count": record_count,
+        "source_row_count": len(rows),
+        "unresolved_indel_count": unresolved_indel_count,
         "empty_source": not rows,
+        "reference_aware_conversion": reference_obj is not None,
         "normalization_required": True,
         "files": outputs,
     }
-
 
 def qc_vcf_adapter(path):
     """Run structural QC on a WGR-CDP adapter VCF."""
@@ -172,17 +237,19 @@ def qc_vcf_adapter(path):
     )
     return result
 
-def convert_maf_directory_to_vcf(input_dir, output_dir, *, pattern="*.maf.gz"):
+def convert_maf_directory_to_vcf(input_dir, output_dir, *, pattern="*.maf.gz", reference=None):
     """Convert all MAF files in a directory and emit a batch provenance manifest."""
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
     files = sorted(input_dir.glob(pattern))
+    reference_obj, owns_reference = _reference_object(reference)
     results = []
     for source in files:
         converted = convert_maf_to_vcf(
             source,
             output_dir,
             prefix=source.name.replace(".maf.gz", "").replace(".maf", ""),
+            reference=reference_obj,
         )
         qc = []
         for item in converted.get("files") or []:
@@ -196,9 +263,11 @@ def convert_maf_directory_to_vcf(input_dir, output_dir, *, pattern="*.maf.gz"):
         })
     files_with_outputs = sum(bool(r["conversion"].get("files")) for r in results)
     qc_items = [item for r in results for item in r["qc"]]
+    conditional_conversions = sum(r["conversion"].get("status") == "CONDITIONAL" for r in results)
     status = (
         "PASS"
         if results and files_with_outputs == len(results)
+        and conditional_conversions == 0
         and qc_items and all(item["status"] == "PASS" for item in qc_items)
         else "Data unavailable" if not results else "CONDITIONAL"
     )
@@ -219,5 +288,7 @@ def convert_maf_directory_to_vcf(input_dir, output_dir, *, pattern="*.maf.gz"):
         "qc_invalid_record_count": sum(item["invalid_record_count"] for item in qc_items),
         "qc_missing_source_tag_count": sum(item["missing_source_tag_count"] for item in qc_items),
         "normalization_required": True,
+        "reference_aware_conversion": reference_obj is not None,
+        "conditional_conversion_count": conditional_conversions,
         "results": results,
     }
