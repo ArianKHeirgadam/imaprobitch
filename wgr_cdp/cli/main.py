@@ -39,6 +39,7 @@ def build_parser():
     inv.add_argument("--category")
     inv.add_argument("--strategy")
     inv.add_argument("--format")
+    inv.add_argument("--data-type",help="exact GDC data_type filter, e.g. Masked Copy Number Segment")
     inv.add_argument("--modality",action="append")
     inv.add_argument("--max-files",type=int)
     acq=sub.add_parser("acquire",help="download and checksum-verify files from an A11 manifest")
@@ -207,7 +208,7 @@ def main(argv=None):
     elif args.command=="intake":
         result=intake_command(args.project,args.output,args.file_access)
     elif args.command=="inventory":
-        result=inventory_command(args.project,args.output,args.access,args.category,args.strategy,args.format,args.modality,args.max_files)
+        result=inventory_command(args.project,args.output,args.access,args.category,args.strategy,args.format,args.modality,args.max_files,args.data_type)
     elif args.command=="acquire":
         result=acquire_command(args.manifest,args.output,args.token,args.limit)
     elif args.command=="register":
