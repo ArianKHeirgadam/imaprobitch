@@ -114,8 +114,17 @@ def parse_vcf(path, sample_id=None, group=None, min_depth=None, min_vaf=None):
                         continue
                     if min_vaf is not None and (vaf is None or vaf < min_vaf):
                         continue
-                    gt_positive = gt not in (None, "", ".", "./.", ".|.", "0/0", "0|0")
-                    status = "Not detected" if gt is not None and not gt_positive else "Detected"
+                    # Interpret genotype explicitly: any called non-reference allele is
+                    # detected; reference-only is negative; missing genotype is unavailable.
+                    gt_tokens = set()
+                    if gt not in MISSING:
+                        gt_tokens = {token for token in str(gt).replace("|", "/").split("/") if token not in MISSING}
+                    if not gt_tokens:
+                        status = "Data unavailable"
+                    elif all(token == "0" for token in gt_tokens):
+                        status = "Not detected"
+                    else:
+                        status = "Detected"
                     rows.append({
                         "patient": observed_sample,
                         "group": group or "unknown",
