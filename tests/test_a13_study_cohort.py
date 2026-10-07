@@ -138,3 +138,51 @@ def test_gdc_get_query_encodes_nested_filters(monkeypatch):
     assert "filters=" in calls["url"]
     assert "TCGA-STAD" in calls["url"]
     assert result["data"]["pagination"]["total"] == 0
+
+
+def test_open_study_subset_is_case_limited_and_deterministic():
+    from wgr_cdp.data_ingestion.study_cohort import select_open_study_subset
+    study = {
+        "source_project": "TCGA-STAD",
+        "selected_pair_count": 3,
+        "selected": [{"case_id": "C1"}, {"case_id": "C2"}, {"case_id": "C3"}],
+        "public_wxs_maf_fallback": [
+            {
+                "file_id": "F3", "file_name": "z.maf.gz", "access": "open",
+                "experimental_strategy": "WXS", "data_format": "MAF",
+                "cases": [{"case_id": "C3"}],
+            },
+            {
+                "file_id": "F1", "file_name": "a.maf.gz", "access": "open",
+                "experimental_strategy": "WXS", "data_format": "MAF",
+                "cases": [{"case_id": "C1"}],
+            },
+            {
+                "file_id": "F2", "file_name": "b.maf.gz", "access": "open",
+                "experimental_strategy": "WXS", "data_format": "MAF",
+                "cases": [{"case_id": "C2"}],
+            },
+            {
+                "file_id": "CTRL", "file_name": "c.maf.gz", "access": "controlled",
+                "experimental_strategy": "WXS", "data_format": "MAF",
+                "cases": [{"case_id": "C1"}],
+            },
+        ],
+    }
+    result = select_open_study_subset(study, limit=2)
+    assert result["selected_case_count"] == 2
+    assert result["selected_file_count"] == 2
+    assert result["selected_case_ids"] == ["C1", "C2"]
+    assert [row["file_id"] for row in result["selected_files"]] == ["F1", "F2"]
+    assert result["access_policy"] == "open_only"
+    assert result["download_scope"] == "subset_only"
+
+
+def test_open_study_subset_rejects_nonpositive_limit():
+    from wgr_cdp.data_ingestion.study_cohort import select_open_study_subset
+    try:
+        select_open_study_subset({"selected": [], "public_wxs_maf_fallback": []}, limit=0)
+    except ValueError as exc:
+        assert "greater than zero" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
