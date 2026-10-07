@@ -271,6 +271,9 @@ def convert_maf_directory_to_vcf(input_dir, output_dir, *, pattern="*.maf.gz", r
         and qc_items and all(item["status"] == "PASS" for item in qc_items)
         else "Data unavailable" if not results else "CONDITIONAL"
     )
+    if owns_reference and reference_obj is not None:
+        reference_obj.close()
+
     empty_source_count = sum(
         1 for r in results if r["conversion"].get("empty_source") is True
     )
