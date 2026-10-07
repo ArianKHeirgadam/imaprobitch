@@ -340,8 +340,8 @@ def intake_command(project="TCGA-STAD", output="results/intake", file_access=Non
     record["output"] = str(path)
     return record
 
-def cnv_validate_command(input_path, output, alpha=0.05, permutations=999, seed=42):
-    return validate_cnv_cohort(input_path, output, alpha=alpha, permutations=permutations, seed=seed)
+def cnv_validate_command(input_path, output, alpha=0.05, permutations=999, seed=42, metadata_path=None):
+    return validate_cnv_cohort(input_path, output, alpha=alpha, permutations=permutations, seed=seed, metadata_path=metadata_path)
 
 def validate_command():
     return run_health_check()
