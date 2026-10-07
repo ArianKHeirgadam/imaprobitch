@@ -353,14 +353,14 @@ def report_command(output):
 
 
 def inventory_command(project="TCGA-STAD", output="results/tcga_stad_inventory", access=None,
-                       category=None, strategy=None, data_format=None, modalities=None, max_files=None):
+                       category=None, strategy=None, data_format=None, modalities=None, max_files=None, data_type=None):
     from wgr_cdp.data_ingestion.gdc_acquisition import (
         inventory_files, build_acquisition_manifest,
         write_acquisition_manifest, write_tsv_manifest,
     )
     rows = inventory_files(
         project, data_category=category, access=access,
-        experimental_strategy=strategy, data_format=data_format, max_files=max_files,
+        experimental_strategy=strategy, data_format=data_format, data_type=data_type, max_files=max_files,
     )
     selected = set(modalities) if modalities else None
     manifest = build_acquisition_manifest(project, rows, selected)
