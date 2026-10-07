@@ -107,3 +107,42 @@ def test_acquire_manifest_keeps_unavailable_without_fake_success(tmp_path):
     assert result["verified_count"] == 0
     assert result["acquisition_status"] == "Data unavailable"
     assert result["files"][0]["verified"] is False
+
+
+def test_download_file_curl_fallback_and_size_reporting(monkeypatch, tmp_path):
+    calls = {"curl": 0}
+
+    def failing_open(*args, **kwargs):
+        raise OSError("simulated TLS EOF")
+
+    class Completed:
+        returncode = 0
+
+    def fake_run(command, check=False):
+        calls["curl"] += 1
+        output = command[command.index("--output") + 1]
+        import pathlib
+        pathlib.Path(output).write_bytes(b"abc")
+        return Completed()
+
+    monkeypatch.setattr(a, "urlopen", failing_open)
+    monkeypatch.setattr(a.shutil, "which", lambda name: "curl.exe")
+    monkeypatch.setattr(a.subprocess, "run", fake_run)
+
+    row = {
+        "file_id": "uuid",
+        "file_name": "x.txt",
+        "access": "open",
+        "md5sum": hashlib.md5(b"abc").hexdigest(),
+        "file_size": 3,
+    }
+    manifest = a.build_acquisition_manifest("TCGA-STAD", [row])
+    result = a.acquire_manifest(manifest, tmp_path)
+
+    assert calls["curl"] == 1
+    assert result["acquisition_status"] == "PASS"
+    assert result["verified_count"] == 1
+    assert result["selected_size_bytes"] == 3
+    assert result["selected_size_mb"] == round(3 / 1024**2, 2)
+    assert result["selected_size_gb"] == round(3 / 1024**3, 3)
+    assert result["downloaded_size_bytes"] == 3
