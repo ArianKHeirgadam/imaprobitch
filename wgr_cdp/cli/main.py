@@ -66,6 +66,7 @@ def build_parser():
     mb.add_argument("--input",required=True)
     mb.add_argument("--output",required=True)
     mb.add_argument("--pattern",default="*.maf.gz")
+    mb.add_argument("--reference",help="GRCh38 reference FASTA; required for MAF indels")
     nv=sub.add_parser("normalize-vcf",help="reference-aware normalize one adapter VCF")
     nv.add_argument("--input",required=True)
     nv.add_argument("--output",required=True)
@@ -162,7 +163,7 @@ def main(argv=None):
     elif args.command=="maf-to-vcf":
         result=maf_to_vcf_command(args.input,args.output)
     elif args.command=="maf-batch":
-        result=maf_batch_command(args.input,args.output,args.pattern)
+        result=maf_batch_command(args.input,args.output,args.pattern,args.reference)
     elif args.command=="normalize-vcf":
         result=normalize_vcf_command(args.input,args.output,args.reference,args.reference_build)
     elif args.command=="normalize-vcf-batch":
