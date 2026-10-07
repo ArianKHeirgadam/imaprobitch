@@ -51,3 +51,38 @@ def test_valid_header_with_zero_variant_rows_is_available_not_unavailable(tmp_pa
     assert item["record_count"] == 0
     assert result["empty_source_count"] == 1
     assert result["status"] == "CONDITIONAL"
+
+
+
+def test_reference_aware_indel_conversion_uses_vcf_anchor(tmp_path):
+    source_dir = tmp_path / "maf"
+    out_dir = tmp_path / "vcf"
+    source_dir.mkdir()
+    source = source_dir / "indel.maf"
+    source.write_text(
+        "Hugo_Symbol\tChromosome\tStart_Position\tEnd_Position\t"
+        "Reference_Allele\tTumor_Seq_Allele2\tTumor_Sample_Barcode\t"
+        "Variant_Classification\tVariant_Type\n"
+        "ZC3H15\t2\t5\t5\t-\tGA\tTCGA-TEST-01A\t"
+        "Frame_Shift_Ins\tINS\n"
+        "ZC3H15\t2\t10\t11\tAC\t-\tTCGA-TEST-01A\t"
+        "Frame_Shift_Del\tDEL\n",
+        encoding="utf-8",
+    )
+    fasta = tmp_path / "ref.fa"
+    fasta.write_text(">chr2\nTTTTGCCCCACCC\n", encoding="utf-8")
+
+    result = convert_maf_directory_to_vcf(
+        source_dir, out_dir, pattern="*.maf", reference=fasta
+    )
+
+    assert result["status"] == "PASS"
+    vcf = next(out_dir.glob("*.vcf"))
+    lines = [
+        line.split("\t")
+        for line in vcf.read_text(encoding="utf-8").splitlines()
+        if line and not line.startswith("#")
+    ]
+    assert any(row[1:5] == ["5", ".", "G", "GGA"] for row in lines)
+    assert any(row[1:5] == ["9", ".", "C", "CAC"] for row in lines)
+    assert all(row[3] != "-" and row[4] != "-" for row in lines)
