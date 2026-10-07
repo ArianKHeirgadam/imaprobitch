@@ -1,6 +1,6 @@
 """WGR-CDP command line interface."""
 import argparse, json
-from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, maf_batch_command, one_kg_select_command, one_kg_subset_command, study_cohort_command, study_acquisition_manifest_command, open_study_acquisition_manifest_command, open_study_subset_manifest_command, normalize_vcf_command, normalize_vcf_batch_command, snv_indel_detect_command, snv_indel_validate_command, snv_indel_validate_command
+from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, maf_batch_command, one_kg_select_command, one_kg_subset_command, study_cohort_command, study_acquisition_manifest_command, open_study_acquisition_manifest_command, open_study_subset_manifest_command, normalize_vcf_command, normalize_vcf_batch_command, snv_indel_detect_command, snv_indel_validate_command, cnv_validate_command
 from wgr_cdp.release.reproducibility import release_readiness
 
 
@@ -130,6 +130,12 @@ def build_parser():
     siv.add_argument("--min-vaf",type=float)
     siv.add_argument("--study-manifest",help="optional A13 selected-case manifest for explicit case denominator")
     siv.add_argument("--maf-qc",help="optional A13 MAF batch QC manifest for explicit empty-source denominator")
+    cnv=sub.add_parser("cnv-validate",help="validate real CNV event and dosage signals")
+    cnv.add_argument("--input",required=True)
+    cnv.add_argument("--output",required=True)
+    cnv.add_argument("--alpha",type=float,default=0.05)
+    cnv.add_argument("--permutations",type=int,default=999)
+    cnv.add_argument("--seed",type=int,default=42)
     report=sub.add_parser("report",help="locate an existing HTML report")
     report.add_argument("--output",required=True)
     return parser
@@ -179,6 +185,8 @@ def main(argv=None):
         result=snv_indel_detect_command(args.cancer,args.healthy,args.output,args.alpha,args.min_depth,args.min_vaf)
     elif args.command=="snv-indel-validate":
         result=snv_indel_validate_command(args.cancer,args.output,args.min_depth,args.min_vaf,args.study_manifest,args.maf_qc)
+    elif args.command=="cnv-validate":
+        result=cnv_validate_command(args.input,args.output,args.alpha,args.permutations,args.seed)
     elif args.command=="1000g-select":
         result=one_kg_select_command(args.panel,args.output,args.samples)
     elif args.command=="1000g-subset":
