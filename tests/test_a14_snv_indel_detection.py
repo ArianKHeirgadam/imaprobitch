@@ -37,14 +37,15 @@ def test_parse_vcf_extracts_vaf_depth_and_multiallelic(tmp_path):
 def test_filter_is_strict_and_missing_is_not_negative(tmp_path):
     path = tmp_path / "h.vcf"
     _vcf(path, "H1", [
-        "1\t100\t.\tA\tG\t60\tLowQual\t.\tGT:DP:AD\t0/1:10:5,5\n",
+        "1\t100\t.\tA\tG\t60\tPASS\t.\tGT:DP:AD\t0/1:10:5,5\n",
         "1\t200\t.\tC\tT\t60\tPASS\t.\tGT:DP:AD\t./.:.:.\n",
+        "1\t300\t.\tG\tA\t60\tLowQual\t.\tGT:DP:AD\t1/1:10:0,10\n",
     ])
     rows = parse_vcf(path, group="healthy")
-    assert len(rows) == 1
+    assert len(rows) == 2
     assert rows[0]["status"] == "Detected"
-
-
+    assert rows[1]["status"] == "Data unavailable"
+    assert all(row["pos"] != 300 for row in rows)
 def test_cohort_detection_and_fdr(tmp_path):
     cancer = tmp_path / "c.vcf"
     healthy = tmp_path / "h.vcf"
