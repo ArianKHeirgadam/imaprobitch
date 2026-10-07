@@ -21,7 +21,8 @@ from .gdc import GDC_API, GDCIntakeError, _get_json
 
 def inventory_files(project_id: str, *, data_category: str | None = None,
                     access: str | None = None, experimental_strategy: str | None = None,
-                    data_format: str | None = None, page_size: int = 100,
+                    data_format: str | None = None, data_type: str | None = None,
+                    page_size: int = 100,
                     max_files: int | None = None, timeout: int = 30) -> list[dict]:
     """Return a deterministic file inventory for a GDC project."""
     if page_size < 1 or page_size > 5000:
@@ -37,6 +38,7 @@ def inventory_files(project_id: str, *, data_category: str | None = None,
         ("access", access),
         ("experimental_strategy", experimental_strategy),
         ("data_format", data_format),
+        ("data_type", data_type),
     ):
         if value:
             filters.append({"op": "in", "content": {"field": field, "value": [value]}})
@@ -44,6 +46,11 @@ def inventory_files(project_id: str, *, data_category: str | None = None,
         "file_id", "file_name", "file_size", "md5sum", "data_category",
         "data_type", "data_format", "access", "experimental_strategy",
         "cases.project.project_id", "cases.case_id", "cases.submitter_id",
+        "cases.samples.tumor_descriptor", "cases.samples.tissue_type",
+        "cases.samples.sample_type", "cases.samples.submitter_id", "cases.samples.sample_id",
+        "cases.samples.portions.analytes.aliquots.aliquot_id",
+        "cases.samples.portions.analytes.aliquots.submitter_id",
+        "analysis.workflow_type",
     ])
     out: list[dict] = []
     offset = 0
