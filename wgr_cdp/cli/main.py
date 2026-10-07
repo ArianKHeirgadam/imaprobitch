@@ -128,6 +128,8 @@ def build_parser():
     siv.add_argument("--output",required=True)
     siv.add_argument("--min-depth",type=int)
     siv.add_argument("--min-vaf",type=float)
+    siv.add_argument("--study-manifest",help="optional A13 selected-case manifest for explicit case denominator")
+    siv.add_argument("--maf-qc",help="optional A13 MAF batch QC manifest for explicit empty-source denominator")
     report=sub.add_parser("report",help="locate an existing HTML report")
     report.add_argument("--output",required=True)
     return parser
@@ -176,7 +178,7 @@ def main(argv=None):
     elif args.command=="snv-indel-detect":
         result=snv_indel_detect_command(args.cancer,args.healthy,args.output,args.alpha,args.min_depth,args.min_vaf)
     elif args.command=="snv-indel-validate":
-        result=snv_indel_validate_command(args.cancer,args.output,args.min_depth,args.min_vaf)
+        result=snv_indel_validate_command(args.cancer,args.output,args.min_depth,args.min_vaf,args.study_manifest,args.maf_qc)
     elif args.command=="1000g-select":
         result=one_kg_select_command(args.panel,args.output,args.samples)
     elif args.command=="1000g-subset":
