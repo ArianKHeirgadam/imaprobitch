@@ -51,7 +51,7 @@ def read_cnv_segments(path, group=None, gain_log2=0.25, loss_log2=-0.25):
     rows = []
     for raw in raw_rows:
         row = {_norm_key(k): v for k, v in raw.items()}
-        sample_id = _first(row, ("sample_id", "sample", "patient"))
+        sample_id = _first(row, ("sample_id", "sample", "patient", "gdc_aliquot_id", "gdc_aliquot", "aliquot_id"))
         chrom = _first(row, ("chromosome", "chrom", "chr"))
         start = _first(row, ("start", "start_position"))
         end = _first(row, ("end", "end_position"))
