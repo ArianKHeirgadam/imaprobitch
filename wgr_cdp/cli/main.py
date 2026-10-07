@@ -1,6 +1,6 @@
 """WGR-CDP command line interface."""
 import argparse, json
-from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, maf_batch_command, one_kg_select_command, one_kg_subset_command, study_cohort_command, study_acquisition_manifest_command, open_study_acquisition_manifest_command, normalize_vcf_command, normalize_vcf_batch_command, snv_indel_detect_command
+from .commands import report_command, run_command, validate_command, intake_command, inventory_command, acquire_command, register_command, data_plan_command, one_kg_manifest_command, reference_acquire_command, maf_to_vcf_command, maf_batch_command, one_kg_select_command, one_kg_subset_command, study_cohort_command, study_acquisition_manifest_command, open_study_acquisition_manifest_command, open_study_subset_manifest_command, normalize_vcf_command, normalize_vcf_batch_command, snv_indel_detect_command
 from wgr_cdp.release.reproducibility import release_readiness
 
 
@@ -110,6 +110,11 @@ def build_parser():
     osa=sub.add_parser("open-study-acquisition-manifest",help="build an open-access-only acquisition manifest from a selected study cohort")
     osa.add_argument("--study",required=True)
     osa.add_argument("--output",required=True)
+    oss=sub.add_parser("open-study-subset-manifest",help="build a small deterministic open-access subset manifest by paired case")
+    oss.add_argument("--study",required=True)
+    oss.add_argument("--output",required=True)
+    oss.add_argument("--limit",type=int,default=20)
+    oss.add_argument("--strategy",choices=["WXS"],default="WXS")
     sid=sub.add_parser("snv-indel-detect",help="detect SNV/INDEL features from called VCF/VCF.GZ cohorts")
     sid.add_argument("--cancer",required=True)
     sid.add_argument("--healthy",required=True)
@@ -174,6 +179,8 @@ def main(argv=None):
         result=study_acquisition_manifest_command(args.study,args.output,not args.no_snv,not args.no_cnv,args.public_fallback)
     elif args.command=="open-study-acquisition-manifest":
         result=open_study_acquisition_manifest_command(args.study,args.output)
+    elif args.command=="open-study-subset-manifest":
+        result=open_study_subset_manifest_command(args.study,args.output,args.limit,args.strategy)
     elif args.command=="validate":
         result=validate_command()
     elif args.command=="release":
