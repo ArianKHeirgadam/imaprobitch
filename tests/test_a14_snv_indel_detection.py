@@ -96,3 +96,26 @@ def test_real_cancer_side_validation_is_explicitly_conditional_without_control(t
     assert result["observation_count"] == 2
     assert result["snv_count"] == 1
     assert result["indel_count"] == 1
+
+
+def test_case_denominator_separates_selected_cases_from_variant_bearing_samples(tmp_path):
+    cancer = tmp_path / "cancer.vcf"
+    _vcf(cancer, "C1", [
+        "1\t100\t.\tA\tG\t60\tPASS\t.\tGT\t1/1\n",
+    ])
+    study_manifest = {
+        "selected_case_count": 2,
+        "selected_case_ids": ["CASE-1", "CASE-2"],
+    }
+    maf_qc = {"empty_source_count": 1}
+    from wgr_cdp.research.snv_indel_detection import validate_snv_indel_cohort
+    result = validate_snv_indel_cohort(
+        [cancer],
+        study_manifest=study_manifest,
+        maf_qc=maf_qc,
+    )
+    assert result["selected_case_count"] == 2
+    assert result["variant_bearing_sample_count"] == 1
+    assert result["sample_count"] == 1
+    assert result["empty_source_count"] == 1
+    assert result["case_denominator_status"] == "PASS"
