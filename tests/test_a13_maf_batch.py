@@ -84,5 +84,5 @@ def test_reference_aware_indel_conversion_uses_vcf_anchor(tmp_path):
         if line and not line.startswith("#")
     ]
     assert any(row[1:5] == ["5", ".", "G", "GGA"] for row in lines)
-    assert any(row[1:5] == ["9", ".", "C", "CAC"] for row in lines)
+    assert any(row[1:5] == ["9", ".", "CAC", "C"] for row in lines)
     assert all(row[3] != "-" and row[4] != "-" for row in lines)
