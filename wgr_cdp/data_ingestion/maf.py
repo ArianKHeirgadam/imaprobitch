@@ -113,12 +113,17 @@ def convert_maf_to_vcf(input_path, output_dir, *, prefix="tcga_stad"):
             "source_format": "GDC masked somatic MAF",
             "normalization_required": True,
         })
+    # A valid MAF with a detected header but zero data rows is an available
+    # source with zero reported somatic records, not an unavailable source.
+    # Keep this distinction explicit so downstream logic never turns an empty
+    # callset into a false negative.
     return {
         "schema_version": "A12-MAF-1",
-        "status": "Available" if outputs else "Data unavailable",
+        "status": "Available",
         "source_file": str(input_path),
         "sample_count": len(outputs),
         "record_count": sum(item["record_count"] for item in outputs),
+        "empty_source": not rows,
         "normalization_required": True,
         "files": outputs,
     }
