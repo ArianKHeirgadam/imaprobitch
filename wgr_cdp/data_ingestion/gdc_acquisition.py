@@ -10,6 +10,8 @@ import csv
 import hashlib
 import json
 import os
+import shutil
+import subprocess
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -161,6 +163,24 @@ def verify_file(path: str | Path, expected_md5: str | None, expected_size: int |
     }
 
 
+def _download_with_curl(url: str, target: Path, headers: dict[str, str], timeout: int) -> None:
+    """Fallback downloader for environments where urllib hits TLS EOF resets."""
+    curl = shutil.which("curl.exe") or shutil.which("curl")
+    if not curl:
+        raise RuntimeError("curl executable is not available")
+    command = [
+        curl, "--fail", "--location", "--retry", "3", "--retry-delay", "2",
+        "--retry-all-errors", "--connect-timeout", str(max(10, min(int(timeout), 60))),
+        "--output", str(target),
+    ]
+    for key, value in headers.items():
+        command.extend(["--header", f"{key}: {value}"])
+    command.append(url)
+    completed = subprocess.run(command, check=False)
+    if completed.returncode != 0:
+        raise RuntimeError(f"curl exited with code {completed.returncode}")
+
+
 def download_file(file_row: dict, output_dir: str | Path, token: str | None = None,
                   timeout: int = 60, overwrite: bool = False) -> dict:
     file_id = str(file_row.get("file_id") or "").strip()
@@ -193,7 +213,15 @@ def download_file(file_row: dict, output_dir: str | Path, token: str | None = No
     except Exception as exc:
         if temp.exists():
             temp.unlink()
-        raise GDCIntakeError(f"GDC download failed: {type(exc).__name__}") from exc
+        try:
+            _download_with_curl(request.full_url, temp, headers, timeout)
+            temp.replace(target)
+        except Exception as fallback_exc:
+            if temp.exists():
+                temp.unlink()
+            raise GDCIntakeError(
+                f"GDC download failed: {type(exc).__name__}; curl fallback: {type(fallback_exc).__name__}"
+            ) from fallback_exc
     verification = verify_file(target, file_row.get("md5sum"), file_row.get("file_size"))
     if not verification["verified"] and target.exists():
         target.unlink()
@@ -214,6 +242,18 @@ def acquire_manifest(manifest: dict, output_dir: str | Path, *,
         row["verified"] = result.get("verified", False)
         row["verification"] = result
         results.append(result)
+    expected_size_bytes = sum(int(row.get("file_size") or 0) for row in files)
+    downloaded_size_bytes = sum(
+        int(r.get("actual_size") or 0)
+        for r in results
+        if r.get("verified")
+    )
+    manifest["selected_size_bytes"] = expected_size_bytes
+    manifest["selected_size_mb"] = round(expected_size_bytes / 1024**2, 2)
+    manifest["selected_size_gb"] = round(expected_size_bytes / 1024**3, 3)
+    manifest["downloaded_size_bytes"] = downloaded_size_bytes
+    manifest["downloaded_size_mb"] = round(downloaded_size_bytes / 1024**2, 2)
+    manifest["downloaded_size_gb"] = round(downloaded_size_bytes / 1024**3, 3)
     manifest["downloaded_count"] = sum(r.get("status") in {"PASS", "EXISTS"} for r in results)
     manifest["verified_count"] = sum(bool(r.get("verified")) for r in results)
     if not results:
