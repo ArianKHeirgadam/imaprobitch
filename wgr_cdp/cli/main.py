@@ -136,6 +136,7 @@ def build_parser():
     cnv.add_argument("--alpha",type=float,default=0.05)
     cnv.add_argument("--permutations",type=int,default=999)
     cnv.add_argument("--seed",type=int,default=42)
+    cnv.add_argument("--metadata",help="optional sample_id/group mapping CSV")
     report=sub.add_parser("report",help="locate an existing HTML report")
     report.add_argument("--output",required=True)
     return parser
@@ -186,7 +187,7 @@ def main(argv=None):
     elif args.command=="snv-indel-validate":
         result=snv_indel_validate_command(args.cancer,args.output,args.min_depth,args.min_vaf,args.study_manifest,args.maf_qc)
     elif args.command=="cnv-validate":
-        result=cnv_validate_command(args.input,args.output,args.alpha,args.permutations,args.seed)
+        result=cnv_validate_command(args.input,args.output,args.alpha,args.permutations,args.seed,args.metadata)
     elif args.command=="1000g-select":
         result=one_kg_select_command(args.panel,args.output,args.samples)
     elif args.command=="1000g-subset":
