@@ -3,7 +3,7 @@ using GastricCancerDetection.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GastricCancerDetection.API.Controllers;
-
+//begin
 [ApiController]
 [Route("api/[controller]")]
 public class AnalysisController : ControllerBase
